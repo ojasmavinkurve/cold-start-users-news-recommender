@@ -23,7 +23,7 @@ class AttributeBuilder:
         category_index: Dict[str, int],
         news_embeddings: Dict[str, torch.Tensor],
         device: str = "cpu",
-        verbose: bool = True  # 🔥 controls printing
+        verbose: bool = True  
     ):
 
         self.news_df = news_df.set_index("news_id")
@@ -56,7 +56,7 @@ class AttributeBuilder:
         return news_ids, clicked_ids
 
     # ---------------------------------------------------
-    # 1️⃣ Exposure Attribute
+    # 1️ Exposure Attribute
     # ---------------------------------------------------
 
     def compute_exposure_vector(self, news_ids: List[str]) -> torch.Tensor:
@@ -80,7 +80,7 @@ class AttributeBuilder:
         return exposure_vec
 
     # ---------------------------------------------------
-    # 2️⃣ Early Click Attribute
+    # 2️ Early Click Attribute
     # ---------------------------------------------------
 
     def compute_click_vector(self, clicked_ids: List[str]) -> torch.Tensor:
@@ -106,7 +106,7 @@ class AttributeBuilder:
         return click_vec
 
     # ---------------------------------------------------
-    # 3️⃣ Semantic Prior
+    # 3️ Semantic Prior
     # ---------------------------------------------------
 
     def compute_semantic_prior(self, clicked_ids: List[str]) -> torch.Tensor:
@@ -137,7 +137,7 @@ class AttributeBuilder:
         return semantic
 
     # ---------------------------------------------------
-    # 🔥 Final Builder
+    # Final Builder
     # ---------------------------------------------------
 
     def build_from_impression(self, impressions: str):
