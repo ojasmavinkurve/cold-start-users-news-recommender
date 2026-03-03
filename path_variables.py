@@ -40,6 +40,8 @@ TEST_BEHAVIORS_PATH = os.path.join(TEST_DIR, "behaviors.tsv")
 
 PROCESSED_DIR = os.path.join(DATA_DIR, "processed")
 
+CATEGORY_INDEX_PATH = os.path.join(PROCESSED_DIR, "category_index.pkl")
+
 NEWS_EMBEDDINGS_PATH = os.path.join(PROCESSED_DIR, "news_embeddings.npy")
 NEWS_ID_TO_INDEX_PATH = os.path.join(PROCESSED_DIR, "news_id_to_index.pkl")
 

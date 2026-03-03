@@ -70,16 +70,17 @@ class AttributeEncoder(nn.Module):
 
         return user_attr_embedding
 
-if __name__ == "__main__":
-    B = 2
-    K = 17
+# Test code
+# if __name__ == "__main__":
+#     B = 2
+#     K = 17
 
-    encoder = AttributeEncoder(num_categories=K)
+#     encoder = AttributeEncoder(num_categories=K)
 
-    exposure = torch.rand(B, K)
-    click = torch.rand(B, K)
-    semantic = torch.rand(B, 384)
+#     exposure = torch.rand(B, K)
+#     click = torch.rand(B, K)
+#     semantic = torch.rand(B, 384)
 
-    output = encoder(exposure, click, semantic)
+#     output = encoder(exposure, click, semantic)
 
-    print("Output shape:", output.shape)
+#     print("Output shape:", output.shape)

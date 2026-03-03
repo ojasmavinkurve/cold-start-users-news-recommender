@@ -164,70 +164,84 @@ class AttributeBuilder:
             "raw_attribute": raw_attribute
         }
     
-if __name__ == "__main__":
+# Test code to verify the AttributeBuilder implementation
+# if __name__ == "__main__":
 
-        print("Running AttributeBuilder test...\n")
+#         print("Running AttributeBuilder test...\n")
 
-        # Get project root (one level above preprocessing)
-        PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+#         PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+#         train_news_path = os.path.join(PROJECT_ROOT, "data", "MINDsmall", "train", "news.tsv")
+#         train_behaviors_path = os.path.join(PROJECT_ROOT, "data", "MINDsmall", "train", "behaviors.tsv")
 
-        news_path = os.path.join(
-            PROJECT_ROOT, "data", "MINDsmall", "train", "news.tsv"
-        )
+#         train_news_df = pd.read_csv(
+#             train_news_path,
+#             sep="\t",
+#             header=None,
+#             names=[
+#                 "news_id",
+#                 "category",
+#                 "subcategory",
+#                 "title",
+#                 "abstract",
+#                 "url",
+#                 "title_entities",
+#                 "abstract_entities",
+#             ],
+#         )
 
-        behaviors_path = os.path.join(
-            PROJECT_ROOT, "data", "MINDsmall", "train", "behaviors.tsv"
-        )
+#         train_behaviors_df = pd.read_csv(
+#             train_behaviors_path,
+#             sep="\t",
+#             header=None,
+#             names=[
+#                 "impression_id",
+#                 "user_id",
+#                 "time",
+#                 "history",
+#                 "impressions",
+#             ],
+#         )
 
-        print("News path:", news_path)
-        print("Behaviors path:", behaviors_path)
+#         dev_news_path = os.path.join(PROJECT_ROOT, "data", "MINDsmall", "dev", "news.tsv")
 
-        news_df = pd.read_csv(
-            news_path,
-            sep="\t",
-            header=None,
-            names=[
-                "news_id",
-                "category",
-                "subcategory",
-                "title",
-                "abstract",
-                "url",
-                "title_entities",
-                "abstract_entities",
-            ],
-        )
+#         dev_news_df = pd.read_csv(
+#             dev_news_path,
+#             sep="\t",
+#             header=None,
+#             names=[
+#                 "news_id",
+#                 "category",
+#                 "subcategory",
+#                 "title",
+#                 "abstract",
+#                 "url",
+#                 "title_entities",
+#                 "abstract_entities",
+#             ],
+#         )
 
-        behaviors_df = pd.read_csv(
-            behaviors_path,
-            sep="\t",
-            header=None,
-            names=[
-                "impression_id",
-                "user_id",
-                "time",
-                "history",
-                "impressions",
-            ],
-        )
+#         all_news_df = pd.concat([train_news_df, dev_news_df])
 
-        # Build category index
-        categories = news_df["category"].unique()
-        category_index = {cat: idx for idx, cat in enumerate(categories)}
+#         # Build category index from UNION
+#         categories = sorted(all_news_df["category"].unique())
+#         category_index = {cat: idx for idx, cat in enumerate(categories)}
 
-        # Dummy embeddings for testing
-        news_embeddings = {
-            nid: torch.randn(384)
-            for nid in news_df["news_id"].tolist()
-        }
+#         print("Final Categories:", categories)
+#         print("Total Categories:", len(categories))
 
-        builder = AttributeBuilder(
-            news_df=news_df,
-            category_index=category_index,
-            news_embeddings=news_embeddings,
-            verbose=True,
-        )
+#         # Dummy embeddings for testing
+#         news_embeddings = {
+#             nid: torch.randn(384)
+#             for nid in all_news_df["news_id"].tolist()
+#         }
 
-        sample_impression = behaviors_df.iloc[0]["impressions"]
+#         builder = AttributeBuilder(
+#             news_df=all_news_df,
+#             category_index=category_index,
+#             news_embeddings=news_embeddings,
+#             verbose=True,
+#         )
 
-        builder.build_from_impression(sample_impression)
+#         sample_impression = train_behaviors_df.iloc[0]["impressions"]
+
+#         builder.build_from_impression(sample_impression)
