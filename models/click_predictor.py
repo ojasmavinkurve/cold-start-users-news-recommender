@@ -1,5 +1,6 @@
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 
 
 class ClickPredictor(nn.Module):
@@ -28,8 +29,11 @@ class ClickPredictor(nn.Module):
 
         # Expand user embedding for batch matrix multiplication
         # (B, 384) -> (B, 384, 1)
-        user_embedding = user_embedding.unsqueeze(-1)
+        
+        user_embedding = F.normalize(user_embedding, dim=-1)
+        candidate_embeddings = F.normalize(candidate_embeddings, dim=-1)
 
+        user_embedding = user_embedding.unsqueeze(-1)
         # Batch matrix multiply:
         # (B, K, 384) x (B, 384, 1) -> (B, K, 1)
         scores = torch.bmm(candidate_embeddings, user_embedding)
