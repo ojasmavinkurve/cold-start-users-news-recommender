@@ -346,6 +346,13 @@ def train(config):
                 config["lambda_align"]
             )
 
+            #gaurd for debugging
+            if torch.isnan(loss):
+                print("NaN detected!")
+                print("Scores max:", scores.max())
+                print("Scores min:", scores.min())
+                print("Labels:", labels)
+                break
             # -----------------------------
             # Backprop
             # -----------------------------
@@ -353,6 +360,7 @@ def train(config):
             optimizer.zero_grad()
 
             loss.backward()
+            torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
 
             optimizer.step()
 
@@ -397,7 +405,7 @@ def main():
 
         "batch_size": 32,
         "epochs": 5,
-        "lr": 1e-4,
+        "lr": 5e-5,
         "lambda_align": 0.01,
         "embedding_dim": 384,
         "num_workers": 0,
