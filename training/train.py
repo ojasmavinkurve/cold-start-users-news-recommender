@@ -9,6 +9,7 @@ from tqdm import tqdm
 import torch
 from torch.utils.data import Dataset, DataLoader
 import torch.optim as optim
+import torch.multiprocessing as mp
 
 from models.full_model import ColdStartModel
 from preprocessing.attribute_builder import AttributeBuilder
@@ -220,7 +221,7 @@ def train(config):
         news_df=news_df,
         category_index=category_index,
         news_embeddings=news_embeddings_dict,
-        device=device,
+        device="cpu",
         verbose=False
     )
 
@@ -405,5 +406,5 @@ def main():
 
 
 if __name__ == "__main__":
-
+    mp.set_start_method("spawn", force=True)
     main()
