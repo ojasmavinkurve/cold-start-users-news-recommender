@@ -396,7 +396,7 @@ def main():
         "lr": 1e-4,
         "lambda_align": 0.01,
         "embedding_dim": 384,
-        "num_workers": 4,
+        "num_workers": 0,
         "seed": 42
 
     }
