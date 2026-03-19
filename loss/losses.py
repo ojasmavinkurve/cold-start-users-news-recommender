@@ -40,6 +40,7 @@ def alignment_loss(u_attr, u_hist, history_mask):
     # Sum over embedding dimensions
     mse_per_user = mse_per_user.mean(dim=1)  # (B,)
 
+    history_mask = history_mask.float()
     # Apply mask (only users with history)
     masked_mse = mse_per_user * history_mask
 

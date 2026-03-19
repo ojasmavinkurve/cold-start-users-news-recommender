@@ -101,6 +101,10 @@ class MindDataset(Dataset):
             if label == "1":
                 clicked_index = i
 
+        # 🚨 Handle no-click case
+        if clicked_index is None:
+            return self.__getitem__((idx + 1) % len(self))
+
         candidates = torch.stack(candidates)
 
         label = torch.tensor(clicked_index, dtype=torch.long)
@@ -329,7 +333,7 @@ def train(config):
 
             scores = scores.masked_fill(
                 candidate_mask == 0,
-                float("-inf")
+                -1e9
             )
 
             history_mask = history_masks.squeeze().to(device)
