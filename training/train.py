@@ -224,7 +224,7 @@ def train(config):
         news_df=news_df,
         category_index=category_index,
         news_embeddings=news_embeddings_dict,
-        device=device,
+        device="cpu",
         verbose=False
     )
 

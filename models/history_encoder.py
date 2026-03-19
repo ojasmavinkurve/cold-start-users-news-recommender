@@ -47,7 +47,7 @@ class HistoryEncoder(nn.Module):
 
         # Apply mask BEFORE softmax
         if history_mask is not None:
-            scores = scores.masked_fill(history_mask == 0, float("-inf"))
+            scores = scores.masked_fill(history_mask == 0, -1e9)
 
         # Softmax over valid positions only
         attention_weights = F.softmax(scores, dim=1)
