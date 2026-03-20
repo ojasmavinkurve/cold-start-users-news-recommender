@@ -146,8 +146,8 @@ def evaluate(model, dataloader, device):
 
     model.eval()
 
-    all_scores = []
-    all_labels = []
+    metric_sums = {}
+    count = 0
 
     with torch.no_grad():
 
@@ -188,15 +188,23 @@ def evaluate(model, dataloader, device):
             # mask padded candidates
             scores = scores.masked_fill(candidate_mask == 0, -1e9)
 
-            all_scores.append(scores)
-            all_labels.append(labels)
+            # -----------------------------
+            # Compute metrics per batch
+            # -----------------------------
+            batch_metrics = compute_metrics(scores, labels)
 
-    all_scores = torch.cat(all_scores, dim=0)
-    all_labels = torch.cat(all_labels, dim=0)
+            # accumulate
+            for k, v in batch_metrics.items():
+                if k not in metric_sums:
+                    metric_sums[k] = 0.0
+                metric_sums[k] += v
 
-    metrics = compute_metrics(all_scores, all_labels)
+            count += 1
 
-    return metrics
+    # average over batches
+    final_metrics = {k: v / count for k, v in metric_sums.items()}
+
+    return final_metrics
 # =========================================================
 # Training
 # =========================================================
