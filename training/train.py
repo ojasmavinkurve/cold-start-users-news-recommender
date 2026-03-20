@@ -1,6 +1,7 @@
 import os
 import pickle
 import random
+from networkx import config
 import numpy as np
 import pandas as pd
 from datetime import datetime
@@ -15,6 +16,7 @@ from models.full_model import ColdStartModel
 from preprocessing.attribute_builder import AttributeBuilder
 from training.collate_fn import collate_fn
 from loss.losses import total_loss
+from loss.metrics import compute_metrics
 
 import path_variables as pv
 
@@ -140,7 +142,62 @@ class MindDataset(Dataset):
             history_mask
         )
 
+#evaluate
+def evaluate(model, dataloader, device):
 
+    model.eval()
+
+    all_scores = []
+    all_labels = []
+
+    with torch.no_grad():
+
+        for batch in dataloader:
+
+            (
+                exposure,
+                click,
+                semantic,
+                histories,
+                candidates,
+                labels,
+                history_masks,
+                history_length_mask,
+                candidate_mask
+            ) = batch
+
+            exposure = exposure.to(device)
+            click = click.to(device)
+            semantic = semantic.to(device)
+
+            histories = histories.to(device)
+            candidates = candidates.to(device)
+            labels = labels.to(device)
+
+            history_length_mask = history_length_mask.to(device)
+            candidate_mask = candidate_mask.to(device)
+
+            scores, _, _ = model(
+                exposure,
+                click,
+                semantic,
+                histories,
+                history_length_mask,
+                candidates
+            )
+
+            # mask padded candidates
+            scores = scores.masked_fill(candidate_mask == 0, -1e9)
+
+            all_scores.append(scores)
+            all_labels.append(labels)
+
+    all_scores = torch.cat(all_scores, dim=0)
+    all_labels = torch.cat(all_labels, dim=0)
+
+    metrics = compute_metrics(all_scores, all_labels)
+
+    return metrics
 # =========================================================
 # Training
 # =========================================================
@@ -260,6 +317,32 @@ def train(config):
         collate_fn=collate_fn
     )
 
+    dev_behaviors_df = pd.read_csv(
+    pv.DEV_BEHAVIORS_PATH,
+    sep="\t",
+    header=None,
+    names=[
+        "impression_id",
+        "user_id",
+        "time",
+        "history",
+        "impressions",
+    ],)
+
+    dev_dataset = MindDataset(
+        dev_behaviors_df,
+        attribute_builder,
+        embedding_lookup
+    )
+
+    dev_loader = DataLoader(
+        dev_dataset,
+        batch_size=config["batch_size"],
+        shuffle=False,
+        num_workers=config["num_workers"],
+        collate_fn =collate_fn
+    )
+
     # -----------------------------------------------------
     # Model
     # -----------------------------------------------------
@@ -276,6 +359,7 @@ def train(config):
 
     best_loss = float("inf")
 
+    best_metrics = {"AUC": 0,"MRR": 0,"nDCG@5": 0}
     # -----------------------------------------------------
     # Training loop
     # -----------------------------------------------------
@@ -382,18 +466,22 @@ def train(config):
             os.path.join(run_dir, f"epoch_{epoch+1}.pth")
         )
 
+        #calc metrics on dev set
+        val_metrics = evaluate(model, dev_loader, device)
+
+        print("\nValidation Metrics:")
+        for k, v in val_metrics.items():
+            print(f"{k}: {v:.4f}")
         # save best model
-
-        if avg_loss < best_loss:
-
-            best_loss = avg_loss
+        if val_metrics["AUC"] > best_metrics["AUC"]:
+            best_metrics = val_metrics
 
             torch.save(
                 model.state_dict(),
                 os.path.join(run_dir, "best_model.pth")
             )
 
-            print("Best model updated")
+            print("✅ Best model updated based on AUC")
 
 
 # =========================================================
@@ -405,7 +493,7 @@ def main():
     CONFIG = {
 
         "batch_size": 32,
-        "epochs": 5,
+        "epochs": 15,
         "lr": 5e-5,
         "lambda_align": 0.01,
         "embedding_dim": 384,
