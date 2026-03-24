@@ -211,6 +211,11 @@ def evaluate(model, dataloader, device):
 
 def train(config):
 
+    GLOBAL_BEST_PATH = os.path.join("best_model_global.pth")
+    global_best_auc = 0.0
+    patience = config["patience"]
+    patience_counter = 0
+
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     print("Device:", device)
@@ -372,7 +377,7 @@ def train(config):
     # -----------------------------------------------------
 
     for epoch in range(config["epochs"]):
-
+        print(f"\nStarting Epoch {epoch+1}/{config['epochs']}")
         model.train()
 
         total_loss_epoch = 0
@@ -479,6 +484,22 @@ def train(config):
         print("\nValidation Metrics:")
         for k, v in val_metrics.items():
             print(f"{k}: {v:.4f}")
+        
+        current_auc = val_metrics["AUC"]
+
+        # -------------------------
+        # EARLY STOPPING LOGIC
+        # -------------------------
+        if current_auc > best_auc:
+            best_auc = current_auc
+            patience_counter = 0
+        else:
+            patience_counter += 1
+            print(f"⏳ No improvement. Patience: {patience_counter}/{patience}")
+
+        if patience_counter >= patience:
+            print(" Early stopping triggered!")
+            break
         # save best model
         if val_metrics["AUC"] > best_metrics["AUC"]:
             best_metrics = val_metrics
@@ -488,7 +509,16 @@ def train(config):
                 os.path.join(run_dir, "best_model.pth")
             )
 
-            print("✅ Best model updated based on AUC")
+            print("Best model updated based on AUC")
+        # -------------------------
+        # GLOBAL BEST MODEL
+        # -------------------------
+        if val_metrics["AUC"] > global_best_auc:
+            global_best_auc = val_metrics["AUC"]
+
+            torch.save(model.state_dict(),GLOBAL_BEST_PATH)
+
+            print("Global best model updated!")
 
 
 # =========================================================
@@ -501,9 +531,10 @@ def main():
 
         "batch_size": 32,
         "epochs": 15,
-        "lr": 5e-5,
+        "lr": 0.0005,
         "lambda_align": 0.01,
         "embedding_dim": 384,
+        "patience": 3,
         "num_workers": 0,
         "seed": 42
 
