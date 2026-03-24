@@ -16,8 +16,8 @@ ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
 DATA_DIR = os.path.join(ROOT_DIR, "data", DATASET_NAME)
 
 TRAIN_DIR = os.path.join(DATA_DIR, "train")
-DEV_DIR = os.path.join(DATA_DIR, "dev")
-TEST_DIR = os.path.join(DATA_DIR, "test")  # may not exist for MINDsmall
+DEV_DIR = os.path.join(DATA_DIR, "train") #for mind smlal
+TEST_DIR = os.path.join(DATA_DIR, "dev")  #for mind small
 
 
 # ==========================================================
@@ -27,11 +27,13 @@ TEST_DIR = os.path.join(DATA_DIR, "test")  # may not exist for MINDsmall
 TRAIN_NEWS_PATH = os.path.join(TRAIN_DIR, "news.tsv")
 TRAIN_BEHAVIORS_PATH = os.path.join(TRAIN_DIR, "behaviors.tsv")
 
-DEV_NEWS_PATH = os.path.join(DEV_DIR, "news.tsv")
-DEV_BEHAVIORS_PATH = os.path.join(DEV_DIR, "behaviors.tsv")
+DEV_NEWS_PATH = os.path.join(TRAIN_DIR, "news.tsv")
+DEV_BEHAVIORS_PATH = os.path.join(TRAIN_DIR, "dev_behaviors.tsv")
 
 TEST_NEWS_PATH = os.path.join(TEST_DIR, "news.tsv")
-TEST_BEHAVIORS_PATH = os.path.join(TEST_DIR, "behaviors.tsv")
+TEST_BEHAVIORS_PATH = os.path.join(TEST_DIR, "behaviors.tsv") #change for large
+
+
 
 
 # ==========================================================

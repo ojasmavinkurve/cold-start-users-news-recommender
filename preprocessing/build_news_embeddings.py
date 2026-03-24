@@ -33,12 +33,14 @@ def build_news_embeddings(batch_size=64):
     # Load train + dev news
     train_news = load_news(pv.TRAIN_NEWS_PATH)
     dev_news = load_news(pv.DEV_NEWS_PATH)
+    test_news = load_news(pv.TEST_NEWS_PATH)
 
     print(f"Train news: {len(train_news)}")
     print(f"Dev news: {len(dev_news)}")
+    print(f"Test news: {len(test_news)}")
 
     # Combine & remove duplicates
-    all_news = pd.concat([train_news, dev_news])
+    all_news = pd.concat([train_news, dev_news, test_news])
     all_news = all_news.drop_duplicates(subset=["news_id"])
 
     print(f"Total unique news articles: {len(all_news)}")

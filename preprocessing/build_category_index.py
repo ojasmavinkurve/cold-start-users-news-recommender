@@ -29,12 +29,14 @@ def build_category_index():
     # Load train and dev news
     train_news = load_news(pv.TRAIN_NEWS_PATH)
     dev_news = load_news(pv.DEV_NEWS_PATH)
+    test_news = load_news(pv.TEST_NEWS_PATH)
 
     print(f"Train categories: {train_news['category'].nunique()}")
     print(f"Dev categories: {dev_news['category'].nunique()}")
+    print(f"Test categories: {test_news['category'].nunique()}")
 
     # Combine and take UNION
-    all_news = pd.concat([train_news, dev_news])
+    all_news = pd.concat([train_news, dev_news, test_news])
     categories = sorted(all_news["category"].unique())
 
     print("\nFinal Category List:")
