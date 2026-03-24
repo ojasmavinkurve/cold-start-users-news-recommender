@@ -213,6 +213,7 @@ def train(config):
 
     GLOBAL_BEST_PATH = os.path.join("best_model_global.pth")
     global_best_auc = 0.0
+    best_auc=0.0
     patience = config["patience"]
     patience_counter = 0
 
