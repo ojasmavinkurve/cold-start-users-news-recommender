@@ -55,9 +55,6 @@ class AttributeBuilder:
 
         return news_ids, clicked_ids
 
-    # ---------------------------------------------------
-    # 1️ Exposure Attribute
-    # ---------------------------------------------------
 
     def compute_exposure_vector(self, news_ids: List[str]) -> torch.Tensor:
 
@@ -66,7 +63,13 @@ class AttributeBuilder:
         if len(news_ids) == 0:
             return exposure_vec
 
-        categories = self.news_df.loc[news_ids]["category"]
+        valid_ids = [nid for nid in news_ids if nid in self.news_df.index]
+
+        if len(valid_ids) == 0:
+            return torch.zeros(self.num_categories, device=self.device)
+
+        categories = self.news_df.loc[valid_ids]["category"]
+
         counter = Counter(categories)
         total = len(news_ids)
 
@@ -79,9 +82,6 @@ class AttributeBuilder:
 
         return exposure_vec
 
-    # ---------------------------------------------------
-    # 2️ Early Click Attribute
-    # ---------------------------------------------------
 
     def compute_click_vector(self, clicked_ids: List[str]) -> torch.Tensor:
 
@@ -105,9 +105,6 @@ class AttributeBuilder:
 
         return click_vec
 
-    # ---------------------------------------------------
-    # 3️ Semantic Prior
-    # ---------------------------------------------------
 
     def compute_semantic_prior(self, clicked_ids: List[str]) -> torch.Tensor:
 
