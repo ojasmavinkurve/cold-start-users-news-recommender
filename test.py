@@ -10,7 +10,7 @@ from torch.utils.data import DataLoader
 from models.full_model import ColdStartModel
 from preprocessing.attribute_builder import AttributeBuilder
 from training.collate_fn import collate_fn
-from training.train import EmbeddingLookup, MindDataset  # reuse directly
+from training.train import EmbeddingLookup, MindDataset, evaluate  # reuse directly
 from loss.metrics import compute_metrics  
 
 import path_variables as pv
@@ -20,72 +20,72 @@ import path_variables as pv
 # Evaluation
 # =========================================================
 
-def evaluate(model, dataloader, device):
+# def evaluate(model, dataloader, device):
 
-    model.eval()
-    metric_sums = {}
-    count = 0
+#     model.eval()
+#     metric_sums = {}
+#     count = 0
 
-    all_scores = []
-    all_labels = []
+#     all_scores = []
+#     all_labels = []
 
-    with torch.no_grad():
-        for batch in tqdm(dataloader):
+#     with torch.no_grad():
+#         for batch in tqdm(dataloader):
 
-            (
-                exposure,
-                click,
-                semantic,
-                histories,
-                candidates,
-                labels,
-                history_masks,
-                history_length_mask,
-                candidate_mask
-            ) = batch
+#             (
+#                 exposure,
+#                 click,
+#                 semantic,
+#                 histories,
+#                 candidates,
+#                 labels,
+#                 history_masks,
+#                 history_length_mask,
+#                 candidate_mask
+#             ) = batch
 
-            exposure = exposure.to(device)
-            click = click.to(device)
-            semantic = semantic.to(device)
+#             exposure = exposure.to(device)
+#             click = click.to(device)
+#             semantic = semantic.to(device)
 
-            histories = histories.to(device)
-            candidates = candidates.to(device)
+#             histories = histories.to(device)
+#             candidates = candidates.to(device)
 
-            labels = labels.to(device)
-            candidate_mask = candidate_mask.to(device)
-            history_length_mask = history_length_mask.to(device)
+#             labels = labels.to(device)
+#             candidate_mask = candidate_mask.to(device)
+#             history_length_mask = history_length_mask.to(device)
 
-            # -------------------------
-            # Forward pass
-            # -------------------------
-            scores, _, _ = model(
-                exposure,
-                click,
-                semantic,
-                histories,
-                history_length_mask,
-                candidates
-            )
+#             # -------------------------
+#             # Forward pass
+#             # -------------------------
+#             scores, _, _ = model(
+#                 exposure,
+#                 click,
+#                 semantic,
+#                 histories,
+#                 history_length_mask,
+#                 candidates
+#             )
 
-            # mask padding
-            scores = scores.masked_fill(candidate_mask == 0, -1e9)
-            batch_metrics = compute_metrics(scores, labels)
+#             # mask padding
+#             scores = scores.masked_fill(candidate_mask == 0, -1e9)
+#             batch_metrics = compute_metrics(scores, labels)
 
-            for k, v in batch_metrics.items():
-                metric_sums[k] = metric_sums.get(k, 0) + v
+#             for k, v in batch_metrics.items():
+#                 metric_sums[k] = metric_sums.get(k, 0) + v
 
-            count += 1
+#             count += 1
 
 
-            all_scores.append(scores)
-            all_labels.append(labels)
+#             all_scores.append(scores)
+#             all_labels.append(labels)
 
-    all_scores = torch.cat(all_scores, dim=0)
-    all_labels = torch.cat(all_labels, dim=0)
+#     all_scores = torch.cat(all_scores, dim=0)
+#     all_labels = torch.cat(all_labels, dim=0)
 
-    final_metrics = {k: v / count for k, v in metric_sums.items()}
+#     final_metrics = {k: v / count for k, v in metric_sums.items()}
 
-    return final_metrics
+#     return final_metrics
 
 
 # =========================================================
