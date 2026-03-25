@@ -136,7 +136,15 @@ def main():
         names=train_news.columns
     )
 
-    news_df = pd.concat([train_news, dev_news])
+    test_news = pd.read_csv(
+    pv.TEST_NEWS_PATH,
+    sep="\t",
+    header=None,
+    names=train_news.columns
+)
+
+    news_df = pd.concat([train_news, dev_news, test_news])
+    news_df = news_df.drop_duplicates(subset=["news_id"])
 
     # -----------------------------------------------------
     # Attribute Builder
@@ -192,8 +200,8 @@ def main():
         num_categories=len(category_index)
     ).to(device)
 
-    model.load_state_dict(torch.load("best_model_global.pth", map_location=device))
-
+    model.load_state_dict(torch.load("best_model_global.pth", map_location=device, weights_only=True))
+    
     # -----------------------------------------------------
     # Evaluate
     # -----------------------------------------------------
