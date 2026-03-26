@@ -137,11 +137,12 @@ def main():
     )
 
     test_news = pd.read_csv(
-    pv.TEST_NEWS_PATH,
-    sep="\t",
-    header=None,
-    names=train_news.columns
-)
+        pv.TEST_NEWS_PATH,
+        sep="\t",
+        header=None,
+        names=train_news.columns
+    )
+
 
     news_df = pd.concat([train_news, dev_news, test_news])
     news_df = news_df.drop_duplicates(subset=["news_id"])
@@ -159,7 +160,8 @@ def main():
         news_df=news_df,
         category_index=category_index,
         news_embeddings=news_embeddings_dict,
-        verbose=False
+        verbose=False,
+        is_test=True
     )
 
     # -----------------------------------------------------

@@ -17,6 +17,7 @@ class AttributeEncoder(nn.Module):
     """
 
     def __init__(self, num_categories: int, embedding_dim: int = 384):
+        
         super(AttributeEncoder, self).__init__()
 
         self.num_categories = num_categories

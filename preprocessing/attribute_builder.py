@@ -1,3 +1,5 @@
+from cProfile import label
+
 import torch
 import pandas as pd
 import os
@@ -23,9 +25,10 @@ class AttributeBuilder:
         category_index: Dict[str, int],
         news_embeddings: Dict[str, torch.Tensor],
         device: str = "cpu",
-        verbose: bool = True  
+        verbose: bool = True,
+        is_test: bool = False
     ):
-
+        self.is_test = is_test
         self.news_df = news_df.set_index("news_id")
         self.category_index = category_index
         self.news_embeddings = news_embeddings
@@ -44,8 +47,11 @@ class AttributeBuilder:
         for item in impressions.split():
             nid, label = item.split("-")
             news_ids.append(nid)
-            if label == "1":
-                clicked_ids.append(nid)
+            if self.is_test:
+                clicked_ids = []   # ignore labels
+            else:
+                if label == "1":
+                    clicked_ids.append(nid)
 
         if self.verbose:
             print("\n==============================")
@@ -142,8 +148,12 @@ class AttributeBuilder:
         news_ids, clicked_ids = self._parse_impression(impressions)
 
         exposure_vec = self.compute_exposure_vector(news_ids)
-        click_vec = self.compute_click_vector(clicked_ids)
-        semantic_vec = self.compute_semantic_prior(clicked_ids)
+        if self.is_test:
+            click_vec = torch.zeros(self.num_categories, device=self.device)
+            semantic_vec = torch.zeros(384, device=self.device)
+        else:
+            click_vec = self.compute_click_vector(clicked_ids)
+            semantic_vec = self.compute_semantic_prior(clicked_ids)
 
         raw_attribute = torch.cat(
             [exposure_vec, click_vec, semantic_vec],
