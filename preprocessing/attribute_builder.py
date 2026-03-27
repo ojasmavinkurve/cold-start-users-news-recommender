@@ -35,11 +35,13 @@ class AttributeBuilder:
         self.num_categories = len(category_index)
         self.device = device
         self.verbose = verbose
+        self.news_to_category = dict(zip(news_df["news_id"], news_df["category"]))
 
     # ---------------------------------------------------
     # Utility: Parse Impression
     # ---------------------------------------------------
 
+    
     def _parse_impression(self, impressions: str):
         news_ids = []
         clicked_ids = []
@@ -47,17 +49,9 @@ class AttributeBuilder:
         for item in impressions.split():
             nid, label = item.split("-")
             news_ids.append(nid)
-            if self.is_test:
-                clicked_ids = []   # ignore labels
-            else:
-                if label == "1":
-                    clicked_ids.append(nid)
 
-        if self.verbose:
-            print("\n==============================")
-            print("Impression:", impressions)
-            print("All News IDs:", news_ids)
-            print("Clicked News IDs:", clicked_ids)
+            if not self.is_test and label == "1":
+                clicked_ids.append(nid)
 
         return news_ids, clicked_ids
 
@@ -69,15 +63,14 @@ class AttributeBuilder:
         if len(news_ids) == 0:
             return exposure_vec
 
-        valid_ids = [nid for nid in news_ids if nid in self.news_df.index]
-
-        if len(valid_ids) == 0:
-            return torch.zeros(self.num_categories, device=self.device)
-
-        categories = self.news_df.loc[valid_ids]["category"]
+        categories = [
+            self.news_to_category[nid]
+            for nid in news_ids
+            if nid in self.news_to_category   # ✅ prevents KeyError
+        ]
 
         counter = Counter(categories)
-        total = len(news_ids)
+        total = len(categories)
 
         for cat, count in counter.items():
             if cat in self.category_index:
@@ -98,7 +91,11 @@ class AttributeBuilder:
                 print("Click Vector: ZERO (No clicks)")
             return click_vec
 
-        categories = self.news_df.loc[clicked_ids]["category"]
+        categories = [
+            self.news_to_category[nid]
+            for nid in clicked_ids
+            if nid in self.news_to_category
+        ]
         counter = Counter(categories)
         total = len(clicked_ids)
 
@@ -120,10 +117,11 @@ class AttributeBuilder:
                 print("Semantic Prior: ZERO (No clicks)")
             return semantic
 
-        vectors = []
-        for nid in clicked_ids:
-            if nid in self.news_embeddings:
-                vectors.append(self.news_embeddings[nid])
+        vectors = [
+            self.news_embeddings[nid]
+            for nid in clicked_ids
+            if nid in self.news_embeddings
+        ]
 
         if len(vectors) == 0:
             semantic = torch.zeros(384, device=self.device)
@@ -167,88 +165,6 @@ class AttributeBuilder:
         return {
             "exposure": exposure_vec,
             "click": click_vec,
-            "semantic": semantic_vec,
-            "raw_attribute": raw_attribute
+            "semantic": semantic_vec
         }
     
-# Test code to verify the AttributeBuilder implementation
-# if __name__ == "__main__":
-
-#         print("Running AttributeBuilder test...\n")
-
-#         PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-#         train_news_path = os.path.join(PROJECT_ROOT, "data", "MINDsmall", "train", "news.tsv")
-#         train_behaviors_path = os.path.join(PROJECT_ROOT, "data", "MINDsmall", "train", "behaviors.tsv")
-
-#         train_news_df = pd.read_csv(
-#             train_news_path,
-#             sep="\t",
-#             header=None,
-#             names=[
-#                 "news_id",
-#                 "category",
-#                 "subcategory",
-#                 "title",
-#                 "abstract",
-#                 "url",
-#                 "title_entities",
-#                 "abstract_entities",
-#             ],
-#         )
-
-#         train_behaviors_df = pd.read_csv(
-#             train_behaviors_path,
-#             sep="\t",
-#             header=None,
-#             names=[
-#                 "impression_id",
-#                 "user_id",
-#                 "time",
-#                 "history",
-#                 "impressions",
-#             ],
-#         )
-
-#         dev_news_path = os.path.join(PROJECT_ROOT, "data", "MINDsmall", "dev", "news.tsv")
-
-#         dev_news_df = pd.read_csv(
-#             dev_news_path,
-#             sep="\t",
-#             header=None,
-#             names=[
-#                 "news_id",
-#                 "category",
-#                 "subcategory",
-#                 "title",
-#                 "abstract",
-#                 "url",
-#                 "title_entities",
-#                 "abstract_entities",
-#             ],
-#         )
-
-#         all_news_df = pd.concat([train_news_df, dev_news_df])
-
-#         # Build category index from UNION
-#         categories = sorted(all_news_df["category"].unique())
-#         category_index = {cat: idx for idx, cat in enumerate(categories)}
-
-#         print("Final Categories:", categories)
-#         print("Total Categories:", len(categories))
-
-#         # Dummy embeddings for testing
-#         news_embeddings = {
-#             nid: torch.randn(384)
-#             for nid in all_news_df["news_id"].tolist()
-#         }
-
-#         builder = AttributeBuilder(
-#             news_df=all_news_df,
-#             category_index=category_index,
-#             news_embeddings=news_embeddings,
-#             verbose=True,
-#         )
-
-#         sample_impression = train_behaviors_df.iloc[0]["impressions"]
-
-#         builder.build_from_impression(sample_impression)

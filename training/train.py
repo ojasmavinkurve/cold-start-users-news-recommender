@@ -41,16 +41,12 @@ def set_seed(seed):
 class EmbeddingLookup:
 
     def __init__(self, embeddings, id_map):
-
-        self.embeddings = embeddings
+        self.embeddings = torch.tensor(embeddings, dtype=torch.float32)  
         self.id_map = id_map
 
     def __call__(self, nid):
-
         if nid in self.id_map:
-            idx = self.id_map[nid]
-            return torch.tensor(self.embeddings[idx], dtype=torch.float32)
-
+            return self.embeddings[self.id_map[nid]]  
         return torch.zeros(384)
 
 
@@ -65,6 +61,13 @@ class MindDataset(Dataset):
         self.behaviors = behaviors_df
         self.attr_builder = attribute_builder
         self.embed = embedding_lookup
+        self.cached_attrs = []
+        impressions_list = self.behaviors["impressions"].tolist()
+
+        for imp in tqdm(impressions_list, desc="Building attribute cache"):
+            self.cached_attrs.append(
+                self.attr_builder.build_from_impression(imp)
+            )
 
     def __len__(self):
         return len(self.behaviors)
@@ -79,8 +82,7 @@ class MindDataset(Dataset):
         # -----------------------------
         # Attribute vectors
         # -----------------------------
-
-        attrs = self.attr_builder.build_from_impression(impressions)
+        attrs = self.cached_attrs[idx]
 
         exposure = attrs["exposure"]
         click = attrs["click"]
@@ -92,8 +94,9 @@ class MindDataset(Dataset):
 
         candidates = []
         clicked_index = None
+        items = impressions.split()
 
-        for i, item in enumerate(impressions.split()):
+        for i, item in enumerate(items):
 
             nid, label = item.split("-")
 
@@ -536,7 +539,7 @@ def main():
         "lambda_align": 0.01,
         "embedding_dim": 384,
         "patience": 3,
-        "num_workers": 0,
+        "num_workers": 4,
         "seed": 42
 
     }
