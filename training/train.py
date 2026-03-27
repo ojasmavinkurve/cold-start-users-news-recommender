@@ -539,7 +539,7 @@ def main():
         "lambda_align": 0.01,
         "embedding_dim": 384,
         "patience": 3,
-        "num_workers": 4,
+        "num_workers": 0,
         "seed": 42
 
     }
