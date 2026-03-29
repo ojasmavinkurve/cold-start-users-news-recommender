@@ -49,9 +49,7 @@ class AttributeBuilder:
         for item in impressions.split():
             nid, label = item.split("-")
             news_ids.append(nid)
-
-            if not self.is_test and label == "1":
-                clicked_ids.append(nid)
+            #removed clicked impressions to avoid overfitting
 
         return news_ids, clicked_ids
 
