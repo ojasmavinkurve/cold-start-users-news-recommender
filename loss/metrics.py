@@ -2,19 +2,11 @@ import torch
 import numpy as np
 
 
-# =========================================================
-# Utility: Convert to numpy safely
-# =========================================================
-
 def to_numpy(tensor):
     if isinstance(tensor, torch.Tensor):
         return tensor.detach().cpu().numpy()
     return tensor
 
-
-# =========================================================
-# 1. AUC (per impression, then averaged)
-# =========================================================
 
 def auc_score(scores, labels):
     """
@@ -45,10 +37,6 @@ def auc_score(scores, labels):
     return np.mean(aucs)
 
 
-# =========================================================
-# 2. MRR (Mean Reciprocal Rank)
-# =========================================================
-
 def mrr_score(scores, labels):
     scores = to_numpy(scores)
     labels = to_numpy(labels)
@@ -62,10 +50,6 @@ def mrr_score(scores, labels):
 
     return np.mean(mrr)
 
-
-# =========================================================
-# 3. nDCG@K
-# =========================================================
 
 def ndcg_score(scores, labels, k=5):
     scores = to_numpy(scores)
@@ -88,10 +72,6 @@ def ndcg_score(scores, labels, k=5):
     return np.mean(ndcgs)
 
 
-
-# =========================================================
-# 5. Wrapper (ALL metrics)
-# =========================================================
 
 def compute_metrics(scores, labels, ks=[5, 10]):
     """
