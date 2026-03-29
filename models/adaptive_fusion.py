@@ -29,14 +29,11 @@ class AdaptiveFusion(nn.Module):
         u_attr: (B, 384)
         u_hist: (B, 384)
         """
-
-        # Step 1: Concatenate
         concat = torch.cat([u_attr, u_hist], dim=-1)  # (B, 768)
 
-        # Step 2: Compute gate values
         gate = torch.sigmoid(self.fusion_layer(concat))  # (B, 384)
 
-        # Step 3: Dimension-wise interpolation
+        #dimension-wise interpolation
         final_user_embedding = (
             gate * u_hist +
             (1 - gate) * u_attr

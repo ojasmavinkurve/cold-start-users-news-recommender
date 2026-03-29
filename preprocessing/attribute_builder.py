@@ -25,10 +25,8 @@ class AttributeBuilder:
         category_index: Dict[str, int],
         news_embeddings: Dict[str, torch.Tensor],
         device: str = "cpu",
-        verbose: bool = True,
-        is_test: bool = False
+        verbose: bool = True
     ):
-        self.is_test = is_test
         self.news_df = news_df.set_index("news_id")
         self.category_index = category_index
         self.news_embeddings = news_embeddings
@@ -37,11 +35,6 @@ class AttributeBuilder:
         self.verbose = verbose
         self.news_to_category = dict(zip(news_df["news_id"], news_df["category"]))
 
-    # ---------------------------------------------------
-    # Utility: Parse Impression
-    # ---------------------------------------------------
-
-    
     def _parse_impression(self, impressions: str):
         news_ids = []
         clicked_ids = []
@@ -49,8 +42,8 @@ class AttributeBuilder:
         for item in impressions.split():
             nid, label = item.split("-")
             news_ids.append(nid)
-
-            if not self.is_test and label == "1":
+            #removed clicked impressions to avoid overfitting
+            if label == "1":
                 clicked_ids.append(nid)
 
         return news_ids, clicked_ids
@@ -137,30 +130,20 @@ class AttributeBuilder:
 
         return semantic
 
-    # ---------------------------------------------------
-    # Final Builder
-    # ---------------------------------------------------
-
     def build_from_impression(self, impressions: str):
 
         news_ids, clicked_ids = self._parse_impression(impressions)
 
-        exposure_vec = self.compute_exposure_vector(news_ids)
-        if self.is_test:
-            click_vec = torch.zeros(self.num_categories, device=self.device)
-            semantic_vec = torch.zeros(384, device=self.device)
-        else:
-            click_vec = self.compute_click_vector(clicked_ids)
-            semantic_vec = self.compute_semantic_prior(clicked_ids)
+        #remove clicked items from exposure
+        non_clicked_ids = [
+            nid for nid in news_ids
+            if nid not in clicked_ids
+        ]
 
-        raw_attribute = torch.cat(
-            [exposure_vec, click_vec, semantic_vec],
-            dim=-1
-        )
+        exposure_vec = self.compute_exposure_vector(non_clicked_ids)
 
-        if self.verbose:
-            print("Final Raw Attribute Vector Shape:", raw_attribute.shape)
-            print("==============================\n")
+        click_vec = self.compute_click_vector(clicked_ids)
+        semantic_vec = self.compute_semantic_prior(clicked_ids)
 
         return {
             "exposure": exposure_vec,

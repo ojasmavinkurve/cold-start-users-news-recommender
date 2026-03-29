@@ -69,12 +69,17 @@ class MindDataset(Dataset):
                 self.attr_builder.build_from_impression(imp)
             )
 
+        self.valid_indices = []
+        for i, imp in enumerate(self.behaviors["impressions"]):
+            if any(item.endswith("-1") for item in imp.split()):
+                self.valid_indices.append(i)
+
     def __len__(self):
-        return len(self.behaviors)
+        return len(self.valid_indices)
 
     def __getitem__(self, idx):
-
-        row = self.behaviors.iloc[idx]
+        real_idx = self.valid_indices[idx]
+        row = self.behaviors.iloc[real_idx]
 
         impressions = row["impressions"]
         history = row["history"]
@@ -105,10 +110,10 @@ class MindDataset(Dataset):
             if label == "1":
                 clicked_index = i
 
-        # 🚨 Handle no-click case
+        #fr no clicks case
         if clicked_index is None:
-            return self.__getitem__((idx + 1) % len(self))
-
+            raise ValueError("No clicked item found in impression")
+        
         candidates = torch.stack(candidates)
 
         label = torch.tensor(clicked_index, dtype=torch.long)
@@ -189,7 +194,8 @@ def evaluate(model, dataloader, device):
             )
 
             # mask padded candidates
-            scores = scores.masked_fill(candidate_mask == 0, -1e9)
+            #scores = scores.masked_fill(candidate_mask == 0, -1e9)
+            scores = scores + (candidate_mask + 1e-45).log()
 
             # -----------------------------
             # Compute metrics per batch
@@ -454,10 +460,8 @@ def train(config):
                 print("Scores min:", scores.min())
                 print("Labels:", labels)
                 break
-            # -----------------------------
-            # Backprop
-            # -----------------------------
-
+            
+            #backpropagation
             optimizer.zero_grad()
 
             loss.backward()
@@ -491,15 +495,13 @@ def train(config):
         
         current_auc = val_metrics["AUC"]
 
-        # -------------------------
-        # EARLY STOPPING LOGIC
-        # -------------------------
+        #early stopping
         if current_auc > best_auc:
             best_auc = current_auc
             patience_counter = 0
         else:
             patience_counter += 1
-            print(f"⏳ No improvement. Patience: {patience_counter}/{patience}")
+            print(f"No improvement. Patience: {patience_counter}/{patience}")
 
         if patience_counter >= patience:
             print(" Early stopping triggered!")
@@ -514,9 +516,7 @@ def train(config):
             )
 
             print("Best model updated based on AUC")
-        # -------------------------
-        # GLOBAL BEST MODEL
-        # -------------------------
+        #global best model save
         if val_metrics["AUC"] > global_best_auc:
             global_best_auc = val_metrics["AUC"]
 
@@ -525,9 +525,6 @@ def train(config):
             print("Global best model updated!")
 
 
-# =========================================================
-# Main
-# =========================================================
 
 def main():
 
