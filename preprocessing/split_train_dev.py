@@ -5,7 +5,7 @@ import path_variables as pv
 def split_train_dev(dev_ratio=0.1, seed=42):
 
     df = pd.read_csv(
-        pv.TRAIN_BEHAVIORS_PATH,
+        pv.TRAIN_BEHAVIORS_PATH_BEFORE_SPLIT,
         sep="\t",
         header=None,
         names=[
@@ -17,9 +17,6 @@ def split_train_dev(dev_ratio=0.1, seed=42):
         ],
     )
 
-    # -----------------------------------------
-    # ✅ USER-BASED SPLIT
-    # -----------------------------------------
     users = df["user_id"].unique()
 
     train_users, dev_users = train_test_split(
