@@ -4,6 +4,7 @@ import random
 import numpy as np
 import pandas as pd
 from datetime import datetime
+from sympy import group
 from tqdm import tqdm
 
 import torch
@@ -50,9 +51,6 @@ class EmbeddingLookup:
         return torch.zeros(384)
 
 
-# =========================================================
-# Dataset
-# =========================================================
 
 class MindDataset(Dataset):
 
@@ -64,10 +62,34 @@ class MindDataset(Dataset):
         self.cached_attrs = []
         impressions_list = self.behaviors["impressions"].tolist()
 
-        for imp in tqdm(impressions_list, desc="Building attribute cache"):
-            self.cached_attrs.append(
-                self.attr_builder.build_from_impression(imp)
-            )
+        user_groups = self.behaviors.groupby("user_id")
+
+        for user_id, group in user_groups:
+            group = group.reset_index()  # keep original index
+            for i in range(len(group)):
+
+                real_idx = group.loc[i, "index"]
+                curr_imp = group.loc[i, "impressions"]
+                if i == 0:
+                    # true cold start
+                    attrs = {
+                    "exposure": self.attr_builder.compute_exposure_vector(
+                        [nid.split("-")[0] for nid in curr_imp.split()]
+                    ),
+                    "click": torch.zeros(self.attr_builder.num_categories),
+                    "semantic": torch.zeros(384)
+                    }
+                else:
+                    prev_imp = group.loc[i-1, "impressions"]
+
+                    attrs = self.attr_builder.build_from_impression(prev_imp)
+                    # overwrite exposure with current impression
+                    current_news_ids = [nid.split("-")[0] for nid in curr_imp.split()]
+                    attrs["exposure"] = self.attr_builder.compute_exposure_vector(current_news_ids)
+
+                self.cached_attrs.append(attrs)
+
+        self.cached_attrs = {idx: attr for idx, attr in self.cached_attrs}
 
         self.valid_indices = []
         for i, imp in enumerate(self.behaviors["impressions"]):
@@ -83,20 +105,13 @@ class MindDataset(Dataset):
 
         impressions = row["impressions"]
         history = row["history"]
-
-        # -----------------------------
-        # Attribute vectors
-        # -----------------------------
-        attrs = self.cached_attrs[idx]
+        attrs = self.cached_attrs[real_idx]
 
         exposure = attrs["exposure"]
         click = attrs["click"]
         semantic = attrs["semantic"]
 
-        # -----------------------------
-        # Candidate embeddings
-        # -----------------------------
-
+        #candidate embeddings and label
         candidates = []
         clicked_index = None
         items = impressions.split()
@@ -117,11 +132,7 @@ class MindDataset(Dataset):
         candidates = torch.stack(candidates)
 
         label = torch.tensor(clicked_index, dtype=torch.long)
-
-        # -----------------------------
-        # History embeddings
-        # -----------------------------
-
+        #history embeddings
         history_embeddings = []
 
         if isinstance(history, str):
@@ -197,9 +208,6 @@ def evaluate(model, dataloader, device):
             #scores = scores.masked_fill(candidate_mask == 0, -1e9)
             scores = scores + (candidate_mask + 1e-45).log()
 
-            # -----------------------------
-            # Compute metrics per batch
-            # -----------------------------
             batch_metrics = compute_metrics(scores, labels)
 
             # accumulate
@@ -214,9 +222,6 @@ def evaluate(model, dataloader, device):
     final_metrics = {k: v / count for k, v in metric_sums.items()}
 
     return final_metrics
-# =========================================================
-# Training
-# =========================================================
 
 def train(config):
 
