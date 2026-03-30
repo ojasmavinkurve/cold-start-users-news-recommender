@@ -30,8 +30,8 @@ class ClickPredictor(nn.Module):
         # Expand user embedding for batch matrix multiplication
         # (B, 384) -> (B, 384, 1)
         
-        user_embedding = F.normalize(user_embedding, dim=-1)
-        candidate_embeddings = F.normalize(candidate_embeddings, dim=-1)
+        #user_embedding = F.normalize(user_embedding, dim=-1)
+        #candidate_embeddings = F.normalize(candidate_embeddings, dim=-1)
 
         user_embedding = user_embedding.unsqueeze(-1)
         # Batch matrix multiply:
