@@ -51,7 +51,7 @@ class AttributeEncoder(nn.Module):
         s_proj = self.semantic_proj(semantic)   # (B, 384)
 
         # Compute gating weights
-        raw_concat = torch.cat([exposure, click, semantic], dim=-1)
+        raw_concat = torch.cat([e_proj, c_proj, s_proj], dim=-1)
         gate_scores = self.gate_layer(raw_concat)  # (B, 3)
 
         # Convert scores to probabilities
