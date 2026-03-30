@@ -62,36 +62,40 @@ class MindDataset(Dataset):
         self.cached_attrs = {}
         impressions_list = self.behaviors["impressions"].tolist()
 
-        user_groups = self.behaviors.groupby("user_id")
+        #user_groups = self.behaviors.groupby("user_id")
 
-        for user_id, group in user_groups:
-            group = group.reset_index()  # keep original index
-            for i in range(len(group)):
+        for i in range(len(self.behaviors)):
+            #group = group.reset_index()  # keep original index
+            row=self.behaviors.iloc[i]
+            curr_imp = group.loc[i, "impressions"]
+            user_id = row["user_id"]
 
-                real_idx = group.loc[i, "index"]
-                curr_imp = group.loc[i, "impressions"]
-                current_news_ids = [nid.split("-")[0] for nid in curr_imp.split()]
+            # find previous impression of SAME user
+            prev_rows = self.behaviors.iloc[:i]
+            prev_user_rows = prev_rows[prev_rows["user_id"] == user_id]
 
-                if i == 0:
+            if len(prev_user_rows) == 0:
                     # true cold start
-                    attrs = {
-                    "exposure": self.attr_builder.compute_exposure_vector(
-                        [nid.split("-")[0] for nid in curr_imp.split()]
-                    ),
-                    "click": torch.zeros(self.attr_builder.num_categories),
-                    "semantic": torch.zeros(384)
+                current_news_ids = [nid.split("-")[0] for nid in curr_imp.split()]
+                attrs = {
+                        "exposure": self.attr_builder.compute_exposure_vector(current_news_ids),
+                        "click": torch.zeros(self.attr_builder.num_categories, device=self.attr_builder.device),
+                        "semantic": torch.zeros(384, device=self.attr_builder.device)
                     }
-                else:
-                    prev_imp = group.loc[i-1, "impressions"]
+            else:
+                prev_imp = prev_user_rows.loc[i-1, "impressions"]
 
-                    attrs = self.attr_builder.build_from_impression(prev_imp)
-                    # overwrite exposure with current impression
-                    attrs["exposure"] = self.attr_builder.compute_exposure_vector(current_news_ids)
+                attrs = self.attr_builder.build_from_impression(prev_imp)
+                    
+                # overwrite exposure with current impression
+                current_news_ids = [nid.split("-")[0] for nid in curr_imp.split()]
+                attrs["exposure"] = self.attr_builder.compute_exposure_vector(current_news_ids)
 
                 #self.cached_attrs.append(attrs)
 
-        #self.cached_attrs = {idx: attr for idx, attr in self.cached_attrs}
-        self.cached_attrs[real_idx] = attrs
+            #self.cached_attrs = {idx: attr for idx, attr in self.cached_attrs}
+            self.cached_attrs[i] = attrs
+        
         print(len(self.cached_attrs), len(self.behaviors))
 
         self.valid_indices = []
