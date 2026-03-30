@@ -67,7 +67,7 @@ class MindDataset(Dataset):
         for i in range(len(self.behaviors)):
             #group = group.reset_index()  # keep original index
             row=self.behaviors.iloc[i]
-            curr_imp = group.loc[i, "impressions"]
+            curr_imp = row[i, "impressions"]
             user_id = row["user_id"]
 
             # find previous impression of SAME user
