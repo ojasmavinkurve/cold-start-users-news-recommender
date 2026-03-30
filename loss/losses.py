@@ -56,7 +56,7 @@ def total_loss(scores,
                u_attr,
                u_hist,
                history_mask,
-               lambda_align=0.05): #reduced lambda_align to prevent overfitting
+               lambda_align): #reduced lambda_align to prevent overfitting
     """
     Total training loss.
 

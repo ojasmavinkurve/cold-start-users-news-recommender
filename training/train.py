@@ -21,10 +21,6 @@ from loss.metrics import compute_metrics
 import path_variables as pv
 
 
-# =========================================================
-# Utilities
-# =========================================================
-
 def set_seed(seed):
 
     random.seed(seed)
@@ -34,10 +30,6 @@ def set_seed(seed):
     if torch.cuda.is_available():
         torch.cuda.manual_seed_all(seed)
 
-
-# =========================================================
-# Embedding Lookup
-# =========================================================
 
 class EmbeddingLookup:
 
@@ -238,9 +230,6 @@ def train(config):
 
     set_seed(config["seed"])
 
-    # -----------------------------------------------------
-    # Run folder
-    # -----------------------------------------------------
 
     run_dir = os.path.join(
         "runs",
@@ -251,9 +240,6 @@ def train(config):
 
     print("Run directory:", run_dir)
 
-    # -----------------------------------------------------
-    # Load preprocessing artifacts
-    # -----------------------------------------------------
 
     with open(pv.CATEGORY_INDEX_PATH, "rb") as f:
         category_index = pickle.load(f)
@@ -268,9 +254,6 @@ def train(config):
         news_id_to_index
     )
 
-    # -----------------------------------------------------
-    # Load news
-    # -----------------------------------------------------
 
     train_news = pd.read_csv(
         pv.TRAIN_NEWS_PATH,
@@ -297,9 +280,6 @@ def train(config):
 
     news_df = pd.concat([train_news, dev_news])
 
-    # -----------------------------------------------------
-    # Attribute Builder
-    # -----------------------------------------------------
 
     news_embeddings_dict = {
         nid: torch.tensor(news_embeddings[idx], dtype=torch.float32)
@@ -314,9 +294,6 @@ def train(config):
         verbose=False
     )
 
-    # -----------------------------------------------------
-    # Load behaviors
-    # -----------------------------------------------------
 
     behaviors_df = pd.read_csv(
         pv.TRAIN_BEHAVIORS_PATH,
@@ -371,9 +348,6 @@ def train(config):
         collate_fn =collate_fn
     )
 
-    # -----------------------------------------------------
-    # Model
-    # -----------------------------------------------------
 
     model = ColdStartModel(
         num_categories=len(category_index),
@@ -388,9 +362,6 @@ def train(config):
     best_loss = float("inf")
 
     best_metrics = {"AUC": 0,"MRR": 0,"nDCG@5": 0}
-    # -----------------------------------------------------
-    # Training loop
-    # -----------------------------------------------------
 
     for epoch in range(config["epochs"]):
         print(f"\nStarting Epoch {epoch+1}/{config['epochs']}")
@@ -426,10 +397,7 @@ def train(config):
             history_length_mask = history_length_mask.to(device)
             candidate_mask = candidate_mask.to(device)
 
-            # -----------------------------
-            # Forward
-            # -----------------------------
-
+            #forward
             scores, u_attr, u_hist = model(
                 exposure,
                 click,
@@ -439,10 +407,7 @@ def train(config):
                 candidates
             )
 
-            # -----------------------------
-            # Mask padded candidates
-            # -----------------------------
-
+            #mask padded candidates
             scores = scores.masked_fill(
                 candidate_mask == 0,
                 -1e9
@@ -539,7 +504,7 @@ def main():
         "batch_size": 32,
         "epochs": 15,
         "lr": 0.0005,
-        "lambda_align": 0.01,
+        "lambda_align": 0.05,
         "embedding_dim": 384,
         "patience": 3,
         "num_workers": 0,

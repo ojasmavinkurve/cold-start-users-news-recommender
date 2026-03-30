@@ -59,7 +59,7 @@ class AttributeBuilder:
         categories = [
             self.news_to_category[nid]
             for nid in news_ids
-            if nid in self.news_to_category   # ✅ prevents KeyError
+            if nid in self.news_to_category   
         ]
 
         counter = Counter(categories)
