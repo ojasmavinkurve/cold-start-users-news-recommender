@@ -67,7 +67,7 @@ class MindDataset(Dataset):
         for i in range(len(self.behaviors)):
             #group = group.reset_index()  # keep original index
             row=self.behaviors.iloc[i]
-            curr_imp = row[i, "impressions"]
+            curr_imp = row["impressions"]
             user_id = row["user_id"]
 
             # find previous impression of SAME user
@@ -83,7 +83,7 @@ class MindDataset(Dataset):
                         "semantic": torch.zeros(384, device=self.attr_builder.device)
                     }
             else:
-                prev_imp = prev_user_rows.loc[i-1, "impressions"]
+                prev_imp = prev_user_rows.loc[-1][ "impressions"]
 
                 attrs = self.attr_builder.build_from_impression(prev_imp)
                     
