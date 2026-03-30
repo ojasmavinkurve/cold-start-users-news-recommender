@@ -59,7 +59,7 @@ class MindDataset(Dataset):
         self.behaviors = behaviors_df
         self.attr_builder = attribute_builder
         self.embed = embedding_lookup
-        self.cached_attrs = []
+        self.cached_attrs = {}
         impressions_list = self.behaviors["impressions"].tolist()
 
         user_groups = self.behaviors.groupby("user_id")
@@ -93,7 +93,7 @@ class MindDataset(Dataset):
         #self.cached_attrs = {idx: attr for idx, attr in self.cached_attrs}
         self.cached_attrs[real_idx] = attrs
         print(len(self.cached_attrs), len(self.behaviors))
-        
+
         self.valid_indices = []
         for i, imp in enumerate(self.behaviors["impressions"]):
             if any(item.endswith("-1") for item in imp.split()):
