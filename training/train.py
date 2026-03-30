@@ -70,6 +70,8 @@ class MindDataset(Dataset):
 
                 real_idx = group.loc[i, "index"]
                 curr_imp = group.loc[i, "impressions"]
+                current_news_ids = [nid.split("-")[0] for nid in curr_imp.split()]
+
                 if i == 0:
                     # true cold start
                     attrs = {
@@ -84,13 +86,14 @@ class MindDataset(Dataset):
 
                     attrs = self.attr_builder.build_from_impression(prev_imp)
                     # overwrite exposure with current impression
-                    current_news_ids = [nid.split("-")[0] for nid in curr_imp.split()]
                     attrs["exposure"] = self.attr_builder.compute_exposure_vector(current_news_ids)
 
-                self.cached_attrs.append(attrs)
+                #self.cached_attrs.append(attrs)
 
-        self.cached_attrs = {idx: attr for idx, attr in self.cached_attrs}
-
+        #self.cached_attrs = {idx: attr for idx, attr in self.cached_attrs}
+        self.cached_attrs[real_idx] = attrs
+        print(len(self.cached_attrs), len(self.behaviors))
+        
         self.valid_indices = []
         for i, imp in enumerate(self.behaviors["impressions"]):
             if any(item.endswith("-1") for item in imp.split()):
