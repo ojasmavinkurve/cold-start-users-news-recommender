@@ -60,41 +60,35 @@ class MindDataset(Dataset):
         self.attr_builder = attribute_builder
         self.embed = embedding_lookup
         self.cached_attrs = {}
-        impressions_list = self.behaviors["impressions"].tolist()
-
-        #user_groups = self.behaviors.groupby("user_id")
+        last_seen = {}
 
         for i in range(len(self.behaviors)):
-            #group = group.reset_index()  # keep original index
-            row=self.behaviors.iloc[i]
+
+            row = self.behaviors.iloc[i]
+
             curr_imp = row["impressions"]
             user_id = row["user_id"]
 
-            # find previous impression of SAME user
-            prev_rows = self.behaviors.iloc[:i]
-            prev_user_rows = prev_rows[prev_rows["user_id"] == user_id]
+            if user_id not in last_seen:
 
-            if len(prev_user_rows) == 0:
-                    # true cold start
                 current_news_ids = [nid.split("-")[0] for nid in curr_imp.split()]
+
                 attrs = {
-                        "exposure": self.attr_builder.compute_exposure_vector(current_news_ids),
-                        "click": torch.zeros(self.attr_builder.num_categories, device=self.attr_builder.device),
-                        "semantic": torch.zeros(384, device=self.attr_builder.device)
-                    }
+                    "exposure": self.attr_builder.compute_exposure_vector(current_news_ids),
+                    "click": torch.zeros(self.attr_builder.num_categories, device=self.attr_builder.device),
+                    "semantic": torch.zeros(384, device=self.attr_builder.device)
+                }
+
             else:
-                prev_imp = prev_user_rows.loc[-1][ "impressions"]
+                prev_imp = last_seen[user_id]
 
                 attrs = self.attr_builder.build_from_impression(prev_imp)
-                    
-                # overwrite exposure with current impression
+
                 current_news_ids = [nid.split("-")[0] for nid in curr_imp.split()]
                 attrs["exposure"] = self.attr_builder.compute_exposure_vector(current_news_ids)
 
-                #self.cached_attrs.append(attrs)
-
-            #self.cached_attrs = {idx: attr for idx, attr in self.cached_attrs}
             self.cached_attrs[i] = attrs
+            last_seen[user_id] = curr_imp
         
         print(len(self.cached_attrs), len(self.behaviors))
 
