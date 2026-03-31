@@ -35,7 +35,7 @@ class AttributeEncoder(nn.Module):
 
         # Gating layer
         # Input size = exposure(384) + click(384) + semantic(384)
-        gate_input_dim =embedding_dim *3
+        gate_input_dim =num_categories*2+ embedding_dim
         self.gate_layer = nn.Linear(gate_input_dim, 3)
 
     def forward(self, exposure, click, semantic):
