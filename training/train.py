@@ -1,7 +1,6 @@
 import os
 import pickle
 import random
-from networkx import config
 import numpy as np
 import pandas as pd
 from datetime import datetime
@@ -11,6 +10,7 @@ from tqdm import tqdm
 import torch
 from torch.utils.data import Dataset, DataLoader
 import torch.optim as optim
+import torch.multiprocessing as mp
 
 from models.full_model import ColdStartModel
 from preprocessing.attribute_builder import AttributeBuilder
@@ -520,5 +520,5 @@ def main():
 
 
 if __name__ == "__main__":
-
+    mp.set_start_method("spawn", force=True)
     main()

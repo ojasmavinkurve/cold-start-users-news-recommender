@@ -35,7 +35,7 @@ class AttributeEncoder(nn.Module):
 
         # Gating layer
         # Input size = exposure(384) + click(384) + semantic(384)
-        gate_input_dim =embedding_dim *3
+        gate_input_dim =num_categories*2+ embedding_dim
         self.gate_layer = nn.Linear(gate_input_dim, 3)
 
     def forward(self, exposure, click, semantic):
@@ -51,7 +51,7 @@ class AttributeEncoder(nn.Module):
         s_proj = self.semantic_proj(semantic)   # (B, 384)
 
         # Compute gating weights
-        raw_concat = torch.cat([e_proj, c_proj, s_proj], dim=-1)
+        raw_concat = torch.cat([exposure_proj, click_proj, s_proj], dim=-1)
         gate_scores = self.gate_layer(raw_concat)  # (B, 3)
 
         # Convert scores to probabilities
