@@ -160,8 +160,7 @@ def main():
         news_df=news_df,
         category_index=category_index,
         news_embeddings=news_embeddings_dict,
-        verbose=False,
-        is_test=True
+        verbose=False
     )
 
     # -----------------------------------------------------
