@@ -109,18 +109,22 @@ class MindDataset(Dataset):
         clicked_index = None
         items = impressions.split()
 
+        clicked_indices = []
+
         for i, item in enumerate(items):
-
             nid, label = item.split("-")
-
             candidates.append(self.embed(nid))
 
             if label == "1":
-                clicked_index = i
+                clicked_indices.append(i)
 
-        #fr no clicks case
-        if clicked_index is None:
-            raise ValueError("No clicked item found in impression")
+        if len(clicked_indices) == 0:
+            raise ValueError("No clicked item found")
+
+        #random selection
+        clicked_index = random.choice(clicked_indices)
+        label = torch.tensor(clicked_index, dtype=torch.long)
+
         
         candidates = torch.stack(candidates)
 
