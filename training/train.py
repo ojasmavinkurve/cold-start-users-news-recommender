@@ -508,7 +508,7 @@ def main():
         "batch_size": 32,
         "epochs": 15,
         "lr": 0.0008,
-        "lambda_align": 0.05,
+        "lambda_align": 0.01,
         "embedding_dim": 384,
         "patience": 3,
         "num_workers": 0,
