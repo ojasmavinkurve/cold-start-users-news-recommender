@@ -128,6 +128,7 @@ class MindDataset(Dataset):
         
         candidates = torch.stack(candidates)
 
+        label = torch.tensor(clicked_index, dtype=torch.long)
         #history embeddings
         history_embeddings = []
 
@@ -139,7 +140,7 @@ class MindDataset(Dataset):
         if len(history_embeddings) > 0:
 
             history_embeddings = torch.stack(history_embeddings)
-            history_mask = torch.tensor(1.0)
+            history_mask = torch.tensor([1.0])
 
         else:
 
@@ -201,8 +202,8 @@ def evaluate(model, dataloader, device):
             )
 
             # mask padded candidates
-            scores = scores.masked_fill(candidate_mask == 0, -1e9)
-            #scores = scores + (candidate_mask + 1e-45).log()
+            #scores = scores.masked_fill(candidate_mask == 0, -1e9)
+            scores = scores + (candidate_mask + 1e-45).log()
 
             batch_metrics = compute_metrics(scores, labels)
 
@@ -210,9 +211,9 @@ def evaluate(model, dataloader, device):
             for k, v in batch_metrics.items():
                 if k not in metric_sums:
                     metric_sums[k] = 0.0
-                metric_sums[k] += v * scores.shape[0]   # weight by batch size
+                metric_sums[k] += v
 
-            count += scores.shape[0]
+            count += 1
 
     # average over batches
     final_metrics = {k: v / count for k, v in metric_sums.items()}

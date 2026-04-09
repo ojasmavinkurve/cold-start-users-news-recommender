@@ -135,11 +135,12 @@ class AttributeBuilder:
         news_ids, clicked_ids = self._parse_impression(impressions)
 
         #remove clicked items from exposure
-        # non_clicked_ids = [
-        #     nid for nid in news_ids
-        #     if nid not in clicked_ids]
+        non_clicked_ids = [
+            nid for nid in news_ids
+            if nid not in clicked_ids
+        ]
 
-        exposure_vec = self.compute_exposure_vector(news_ids)
+        exposure_vec = self.compute_exposure_vector(non_clicked_ids)
 
         click_vec = self.compute_click_vector(clicked_ids)
         semantic_vec = self.compute_semantic_prior(clicked_ids)
