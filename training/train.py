@@ -144,7 +144,7 @@ class MindDataset(Dataset):
         else:
 
             history_embeddings = torch.zeros(0, 384)
-            history_mask = torch.tensor([0.0])
+            history_mask = torch.tensor(0.0)
 
         return (
             exposure,
