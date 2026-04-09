@@ -140,7 +140,7 @@ class MindDataset(Dataset):
         if len(history_embeddings) > 0:
 
             history_embeddings = torch.stack(history_embeddings)
-            history_mask = torch.tensor([1.0])
+            history_mask = torch.tensor(1.0)
 
         else:
 
