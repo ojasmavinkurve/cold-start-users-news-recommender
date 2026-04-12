@@ -29,7 +29,7 @@ TRAIN_BEHAVIORS_PATH_BEFORE_SPLIT = os.path.join(TRAIN_DIR, "behaviors.tsv")
 TRAIN_BEHAVIORS_PATH = os.path.join(TRAIN_DIR, "behaviors.tsv") #make "train_behaviours" for mind small
 
 DEV_NEWS_PATH = os.path.join(DEV_DIR, "news.tsv")
-DEV_BEHAVIORS_PATH = os.path.join(DEV_DIR, "dev_behaviors.tsv")
+DEV_BEHAVIORS_PATH = os.path.join(DEV_DIR, "behaviors.tsv")
 
 TEST_NEWS_PATH = os.path.join(TEST_DIR, "news.tsv")
 TEST_BEHAVIORS_PATH = os.path.join(TEST_DIR, "behaviors.tsv") #change for large
