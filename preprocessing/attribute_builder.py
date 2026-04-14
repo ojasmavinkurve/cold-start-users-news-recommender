@@ -38,16 +38,17 @@ class AttributeBuilder:
     def _parse_impression(self, impressions: str):
         news_ids = []
         clicked_ids = []
-
+    
         for item in impressions.split():
-            nid, label = item.split("-")
-            news_ids.append(nid)
-            #removed clicked impressions to avoid overfitting
-            if label == "1":
+            parts = item.split("-")
+            nid = parts[0]
+            
+            news_ids.append(nid) #removed clicked impressions to avoid overfitting
+             #Only if label exists
+            if len(parts) == 2 and parts[1] == "1":
                 clicked_ids.append(nid)
 
         return news_ids, clicked_ids
-
 
     def compute_exposure_vector(self, news_ids: List[str]) -> torch.Tensor:
 
