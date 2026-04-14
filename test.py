@@ -183,7 +183,8 @@ def main():
     dataset = MindDataset(
         behaviors_df,
         attribute_builder,
-        embedding_lookup
+        embedding_lookup,
+        is_test=True
     )
 
     dataloader = DataLoader(
