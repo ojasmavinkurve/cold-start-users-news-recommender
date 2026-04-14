@@ -123,7 +123,7 @@ class MindDataset(Dataset):
 
             if len(parts) == 2:
                 has_label=True
-                if parts[1] == 1
+                if parts[1] == 1 :
                     clicked_indices.append(i)
                 
         candidates = torch.stack(candidates)
