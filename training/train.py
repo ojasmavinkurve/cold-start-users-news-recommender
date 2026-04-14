@@ -46,13 +46,14 @@ class EmbeddingLookup:
 
 class MindDataset(Dataset):
 
-    def __init__(self, behaviors_df, attribute_builder, embedding_lookup):
+    def __init__(self, behaviors_df, attribute_builder, embedding_lookup, is_test=False):
 
         self.behaviors = behaviors_df
         self.attr_builder = attribute_builder
         self.embed = embedding_lookup
         self.cached_attrs = {}
         last_seen = {}
+        self.is_test = is_test
 
         for i in range(len(self.behaviors)):
 
@@ -84,10 +85,13 @@ class MindDataset(Dataset):
         
         print(len(self.cached_attrs), len(self.behaviors))
 
-        self.valid_indices = []
-        for i, imp in enumerate(self.behaviors["impressions"]):
-            if any(item.endswith("-1") for item in imp.split()):
-                self.valid_indices.append(i)
+        if self.is_test:
+            self.valid_indices = list(range(len(self.behaviors)))
+        else:
+            self.valid_indices = []
+            for i, imp in enumerate(self.behaviors["impressions"]):
+                if any(item.endswith("-1") for item in imp.split()):
+                    self.valid_indices.append(i)
 
     def __len__(self):
         return len(self.valid_indices)
@@ -110,40 +114,40 @@ class MindDataset(Dataset):
         items = impressions.split()
 
         clicked_indices = []
+        has_label = False
 
         for i, item in enumerate(items):
-            nid, label = item.split("-")
+            parts = item.split("-")
+            nid=parts[0]
             candidates.append(self.embed(nid))
 
-            if label == "1":
-                clicked_indices.append(i)
-
-        if len(clicked_indices) == 0:
-            raise ValueError("No clicked item found")
-
-        #random selection
-        clicked_index = random.choice(clicked_indices)
-        label = torch.tensor(clicked_index, dtype=torch.long)
-
-        
+            if len(parts) == 2:
+                has_label=True
+                if parts[1] == "1";
+                    clicked_indices.append(i)
+                
         candidates = torch.stack(candidates)
+
+        if has_label and len(clicked_indices) > 0:
+            #random selection
+            clicked_index = random.choice(clicked_indices)
+            label = torch.tensor(clicked_index, dtype=torch.long)
+        else:
+            label = torch.tensor(-1, dtype=torch.long)
 
         label = torch.tensor(clicked_index, dtype=torch.long)
         #history embeddings
         history_embeddings = []
 
         if isinstance(history, str):
-
             for nid in history.split():
                 history_embeddings.append(self.embed(nid))
-
+                
         if len(history_embeddings) > 0:
-
             history_embeddings = torch.stack(history_embeddings)
             history_mask = torch.tensor(1.0)
 
         else:
-
             history_embeddings = torch.zeros(0, 384)
             history_mask = torch.tensor(0.0)
 
@@ -156,6 +160,7 @@ class MindDataset(Dataset):
             label,
             history_mask
         )
+        
 
 #evaluate
 def evaluate(model, dataloader, device):
@@ -341,7 +346,8 @@ def train(config):
     dev_dataset = MindDataset(
         dev_behaviors_df,
         attribute_builder,
-        embedding_lookup
+        embedding_lookup, 
+        is_test=False
     )
 
     dev_loader = DataLoader(
