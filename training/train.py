@@ -406,7 +406,7 @@ def train(config):
             histories = histories.to(device)
             candidates = candidates.to(device)
 
-            labels = labels.to(device)
+            labels = eval_labels.to(device)
 
             history_length_mask = history_length_mask.to(device)
             candidate_mask = candidate_mask.to(device)
@@ -490,11 +490,11 @@ def train(config):
         for k, v in val_metrics.items():
             print(f"{k}: {v:.4f}")
         
-        current_auc = val_metrics["AUC"]
+        current_mrr = val_metrics["MRR"]
 
         #early stopping
-        if current_auc > best_auc:
-            best_auc = current_auc
+        if current_mrr > best_mrr:
+            best_mrr= current_mrr
             patience_counter = 0
         else:
             patience_counter += 1
@@ -504,7 +504,7 @@ def train(config):
             print(" Early stopping triggered!")
             break
         # save best model
-        if val_metrics["AUC"] > best_metrics["AUC"]:
+        if val_metrics["MRR"] > best_metrics["MRR"]:
             best_metrics = val_metrics
 
             torch.save(
@@ -512,10 +512,10 @@ def train(config):
                 os.path.join(run_dir, "best_model.pth")
             )
 
-            print("Best model updated based on AUC")
+            print("Best model updated based on MRR")
         #global best model save
-        if val_metrics["AUC"] > global_best_auc:
-            global_best_auc = val_metrics["AUC"]
+        if val_metrics["MRR"] > global_best_mrr:
+            global_best_mrr = val_metrics["MRR"]
 
             torch.save(model.state_dict(),GLOBAL_BEST_PATH)
 
