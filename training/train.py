@@ -134,8 +134,7 @@ class MindDataset(Dataset):
             label = torch.tensor(clicked_index, dtype=torch.long)
         else:
             label = torch.tensor(-1, dtype=torch.long)
-
-        label = torch.tensor(clicked_index, dtype=torch.long)
+       
         #history embeddings
         history_embeddings = []
 
