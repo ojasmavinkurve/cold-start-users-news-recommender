@@ -23,7 +23,8 @@ def collate_fn(batch):
     exposures = torch.stack(exposures)
     clicks = torch.stack(clicks)
     semantics = torch.stack(semantics)
-    labels = torch.stack(labels)
+    labels = list(labels)
+    eval_labels = torch.stack(eval_labels)
     history_masks = torch.stack(history_masks)
 
     # -----------------------------------------
@@ -83,6 +84,7 @@ def collate_fn(batch):
         padded_histories,
         padded_candidates,
         labels,
+        eval_labels,
         history_masks,
         history_length_mask,
         candidate_mask

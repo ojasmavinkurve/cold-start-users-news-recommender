@@ -22,34 +22,45 @@ def bpr_loss(scores, labels):
     scores: (B, K)
     labels: (B,) -> index of positive item
     """
-
+    total_loss = 0.0
+    valid_count = 0
     B, K = scores.shape
 
-    # positive scores
-    pos_scores = scores[torch.arange(B), labels]  # (B,)
 
-    # expand for broadcasting
-    pos_scores = pos_scores.unsqueeze(1)  # (B, 1)
+    for i in range(B):
 
-    # compute pairwise difference
-    diff = pos_scores - scores  # (B, K)
+        pos_indices = labels[i]
 
-    # ignore positive item itself
-    mask = torch.ones_like(scores)
-    mask[torch.arange(B), labels] = 0
+        # skip if no positives
+        if pos_indices.numel() == 0:
+            continue
 
-    # apply sigmoid only to negatives
-    loss = -torch.log(torch.sigmoid(diff) + 1e-8) * mask
+        pos_scores = scores[i][pos_indices]  # (P,)
 
-    # average over negatives
-    loss = loss.sum(dim=1) / (mask.sum(dim=1) + 1e-8)
+        # create negative mask
+        neg_mask = torch.ones(K, dtype=torch.bool, device=scores.device)
+        neg_mask[pos_indices] = False
 
-    return loss.mean()
+        neg_scores = scores[i][neg_mask]  # (N,)
+
+        # pairwise differences: (P, N)
+        diff = pos_scores.unsqueeze(1) - neg_scores.unsqueeze(0)
+
+        # BPR loss
+        loss = -torch.log(torch.sigmoid(diff) + 1e-8).mean()
+
+        total_loss += loss
+        valid_count += 1
+
+    if valid_count == 0:
+        return torch.tensor(0.0, device=scores.device)
+
+    return total_loss / valid_count
 
 
 def alignment_loss(u_attr, u_hist, history_mask):
     """
-    Attribute–Behavior alignment loss.
+    Attribute Behavior alignment loss.
 
     Computes MSE between attribute embedding and history embedding,
     but only for users who have history.
