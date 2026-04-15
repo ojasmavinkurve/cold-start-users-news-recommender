@@ -16,37 +16,36 @@ import torch.nn.functional as F
 #     return F.cross_entropy(scores, labels)
 
 def bpr_loss(scores, labels):
-    """
-    BPR loss for ranking.
 
-    scores: (B, K)
-    labels: (B,) -> index of positive item
-    """
     total_loss = 0.0
     valid_count = 0
-    B, K = scores.shape
 
+    B, K = scores.shape
 
     for i in range(B):
 
         pos_indices = labels[i]
 
-        # skip if no positives
         if pos_indices.numel() == 0:
             continue
 
-        pos_scores = scores[i][pos_indices]  # (P,)
+        pos_scores = scores[i][pos_indices]
 
-        # create negative mask
         neg_mask = torch.ones(K, dtype=torch.bool, device=scores.device)
         neg_mask[pos_indices] = False
 
-        neg_scores = scores[i][neg_mask]  # (N,)
+        neg_scores = scores[i][neg_mask]
 
-        # pairwise differences: (P, N)
-        diff = pos_scores.unsqueeze(1) - neg_scores.unsqueeze(0)
+        #skip if no negatives or invalid shape
+        if neg_scores.numel() == 0 or pos_scores.dim() == 0:
+            continue
 
-        # BPR loss
+        # ensure proper shape
+        pos_scores = pos_scores.view(-1, 1)   # (P,1)
+        neg_scores = neg_scores.view(1, -1)   # (1,N)
+
+        diff = pos_scores - neg_scores        # (P,N)
+
         loss = -torch.log(torch.sigmoid(diff) + 1e-8).mean()
 
         total_loss += loss
