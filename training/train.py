@@ -129,11 +129,13 @@ class MindDataset(Dataset):
         candidates = torch.stack(candidates)
 
         if has_label and len(clicked_indices) > 0:
-            #random selection
-            clicked_index = random.choice(clicked_indices)
-            label = torch.tensor(clicked_index, dtype=torch.long)
+            #choose all clicked items
+            #clicked_index = random.choice(clicked_indices)
+            label = torch.tensor(clicked_indices, dtype=torch.long)
+            eval_label = torch.tensor(clicked_indices[0], dtype=torch.long)
         else:
-            label = torch.tensor(-1, dtype=torch.long)
+            label = torch.tensor([], dtype=torch.long)
+            eval_label = torch.tensor(-1, dtype=torch.long)
        
         #history embeddings
         history_embeddings = []
@@ -157,6 +159,7 @@ class MindDataset(Dataset):
             history_embeddings,
             candidates,
             label,
+            eval_label,
             history_mask
         )
         
@@ -180,6 +183,7 @@ def evaluate(model, dataloader, device):
                 histories,
                 candidates,
                 labels,
+                eval_labels,
                 history_masks,
                 history_length_mask,
                 candidate_mask
@@ -191,7 +195,7 @@ def evaluate(model, dataloader, device):
 
             histories = histories.to(device)
             candidates = candidates.to(device)
-            labels = labels.to(device)
+            labels = eval_labels.to(device)
 
             history_length_mask = history_length_mask.to(device)
             candidate_mask = candidate_mask.to(device)
@@ -206,8 +210,8 @@ def evaluate(model, dataloader, device):
             )
 
             # mask padded candidates
-            #scores = scores.masked_fill(candidate_mask == 0, -1e9)
-            scores = scores + (candidate_mask + 1e-45).log()
+            scores = scores.masked_fill(candidate_mask == 0, -1e9)
+            #scores = scores + (candidate_mask + 1e-45).log()
 
             batch_metrics = compute_metrics(scores, labels)
 
