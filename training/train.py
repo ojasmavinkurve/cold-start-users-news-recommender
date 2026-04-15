@@ -422,7 +422,17 @@ def train(config):
                 -1e9
             )
 
-            history_mask = history_masks.squeeze().to(device)
+            #filtering invalid labels
+            valid_mask = labels >= 0
+
+            if len(labels) == 0:
+                continue
+
+            scores = scores[valid_mask]
+            labels = labels[valid_mask]
+            u_attr = u_attr[valid_mask]
+            u_hist = u_hist[valid_mask]
+            history_mask = history_masks.squeeze().to(device)[valid_mask]
 
             loss, rec_loss, align_loss = total_loss(
                 scores,
@@ -433,6 +443,8 @@ def train(config):
                 config["lambda_align"]
             )
 
+            #need to do l2 regularization to prevent overfitting. we can add it to the total loss
+            
             #gaurd for debugging
             if torch.isnan(loss):
                 print("NaN detected!")
