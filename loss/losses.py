@@ -2,18 +2,49 @@ import torch
 import torch.nn.functional as F
 
 
-def recommendation_loss(scores, labels):
-    """
-    Cross-entropy recommendation loss.
+# def recommendation_loss(scores, labels):
+#     """
+#     Cross-entropy recommendation loss.
 
-    Args:
-        scores: (B, K) raw prediction scores for candidate news
-        labels: (B,) index of clicked news in candidate list
+#     Args:
+#         scores: (B, K) raw prediction scores for candidate news
+#         labels: (B,) index of clicked news in candidate list
 
-    Returns:
-        Scalar cross-entropy loss
+#     Returns:
+#         Scalar cross-entropy loss
+#     """
+#     return F.cross_entropy(scores, labels)
+
+def bpr_loss(scores, labels):
     """
-    return F.cross_entropy(scores, labels)
+    BPR loss for ranking.
+
+    scores: (B, K)
+    labels: (B,) -> index of positive item
+    """
+
+    B, K = scores.shape
+
+    # positive scores
+    pos_scores = scores[torch.arange(B), labels]  # (B,)
+
+    # expand for broadcasting
+    pos_scores = pos_scores.unsqueeze(1)  # (B, 1)
+
+    # compute pairwise difference
+    diff = pos_scores - scores  # (B, K)
+
+    # ignore positive item itself
+    mask = torch.ones_like(scores)
+    mask[torch.arange(B), labels] = 0
+
+    # apply sigmoid only to negatives
+    loss = -torch.log(torch.sigmoid(diff) + 1e-8) * mask
+
+    # average over negatives
+    loss = loss.sum(dim=1) / (mask.sum(dim=1) + 1e-8)
+
+    return loss.mean()
 
 
 def alignment_loss(u_attr, u_hist, history_mask):
@@ -75,7 +106,7 @@ def total_loss(scores,
     """
 
     # Recommendation loss
-    rec_loss = recommendation_loss(scores, labels)
+    rec_loss = bpr_loss(scores, labels)
 
     # Alignment loss (only for users with history)
     #when users have less history, the alignment loss can be noisy. we donot consider users with less history 
@@ -102,7 +133,7 @@ if __name__ == "__main__":
 
     history_mask = torch.tensor([1.0, 0.0, 1.0])
 
-    rec = recommendation_loss(scores, labels)
+    rec = bpr_loss(scores, labels)
     align = alignment_loss(u_attr, u_hist, history_mask)
     total, rec_l, align_l = total_loss(
         scores, labels, u_attr, u_hist, history_mask, lambda_align=0.01

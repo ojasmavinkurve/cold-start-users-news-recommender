@@ -4,7 +4,7 @@ import os
 # SELECT DATASET HERE
 # ==========================================================
 
-DATASET_NAME = "MINDlarge"   # Change to "MINDlarge" later
+DATASET_NAME = "MINDsmall"   # Change to "MINDlarge" later
 
 
 # ==========================================================
@@ -16,8 +16,8 @@ ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
 DATA_DIR = os.path.join(ROOT_DIR, "data", DATASET_NAME)
 
 TRAIN_DIR = os.path.join(DATA_DIR, "train")
-DEV_DIR = os.path.join(DATA_DIR, "dev") #for mind smlal
-TEST_DIR = os.path.join(DATA_DIR, "test")  #for mind small
+DEV_DIR = os.path.join(DATA_DIR, "train") #train for mind smlal
+TEST_DIR = os.path.join(DATA_DIR, "dev")  #for mind small
 
 
 # ==========================================================
@@ -26,13 +26,13 @@ TEST_DIR = os.path.join(DATA_DIR, "test")  #for mind small
 
 TRAIN_NEWS_PATH = os.path.join(TRAIN_DIR, "news.tsv")
 TRAIN_BEHAVIORS_PATH_BEFORE_SPLIT = os.path.join(TRAIN_DIR, "behaviors.tsv")
-TRAIN_BEHAVIORS_PATH = os.path.join(TRAIN_DIR, "behaviors.tsv") #make "train_behaviours" for mind small
+TRAIN_BEHAVIORS_PATH = os.path.join(TRAIN_DIR, "train_behaviors.tsv") #make "train_behaviours" for mind small
 
 DEV_NEWS_PATH = os.path.join(DEV_DIR, "news.tsv")
-DEV_BEHAVIORS_PATH = os.path.join(DEV_DIR, "behaviors.tsv")
+DEV_BEHAVIORS_PATH = os.path.join(DEV_DIR, "dev_behaviors.tsv")
 
 TEST_NEWS_PATH = os.path.join(TEST_DIR, "news.tsv")
-TEST_BEHAVIORS_PATH = os.path.join(TEST_DIR, "behaviors.tsv") #change for large
+TEST_BEHAVIORS_PATH = os.path.join(TEST_DIR, "test_behaviors.tsv") #change for large
 
 
 
