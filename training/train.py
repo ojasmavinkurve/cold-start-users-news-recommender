@@ -393,6 +393,7 @@ def train(config):
                 histories,
                 candidates,
                 labels,
+                eval_labels,
                 history_masks,
                 history_length_mask,
                 candidate_mask
