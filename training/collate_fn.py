@@ -14,6 +14,7 @@ def collate_fn(batch):
         histories,
         candidates,
         labels,
+        eval_labels,
         history_masks
     ) = zip(*batch)
 
