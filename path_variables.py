@@ -32,7 +32,7 @@ DEV_NEWS_PATH = os.path.join(DEV_DIR, "news.tsv")
 DEV_BEHAVIORS_PATH = os.path.join(DEV_DIR, "dev_behaviors.tsv")
 
 TEST_NEWS_PATH = os.path.join(TEST_DIR, "news.tsv")
-TEST_BEHAVIORS_PATH = os.path.join(TEST_DIR, "test_behaviors.tsv") #change for large
+TEST_BEHAVIORS_PATH = os.path.join(TEST_DIR, "behaviors.tsv") #change for large
 
 
 
