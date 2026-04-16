@@ -450,7 +450,8 @@ def train(config):
                 u_attr,
                 u_hist,
                 history_mask,
-                config["lambda_align"]
+                config["lambda_align"],
+                config["lambda_reg"]
             )
 
             #need to do l2 regularization to prevent overfitting. we can add it to the total loss
@@ -536,6 +537,7 @@ def main():
         "epochs": 15,
         "lr": 0.0008,
         "lambda_align": 0.05,
+        "lambda_reg": 0.0001,
         "embedding_dim": 384,
         "patience": 3,
         "num_workers": 0,
