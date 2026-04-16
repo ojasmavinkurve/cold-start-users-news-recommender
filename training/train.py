@@ -195,7 +195,7 @@ def evaluate(model, dataloader, device):
 
             histories = histories.to(device)
             candidates = candidates.to(device)
-            labels = eval_labels.to(device)
+            labels = [l.to(device) for l in labels]
 
             history_length_mask = history_length_mask.to(device)
             candidate_mask = candidate_mask.to(device)
@@ -231,8 +231,8 @@ def evaluate(model, dataloader, device):
 def train(config):
 
     GLOBAL_BEST_PATH = os.path.join("best_model_global.pth")
-    global_best_auc = 0.0
-    best_auc=0.0
+    global_best_mrr = 0.0
+    best_mrr=0.0
     patience = config["patience"]
     patience_counter = 0
 
@@ -406,8 +406,8 @@ def train(config):
             histories = histories.to(device)
             candidates = candidates.to(device)
 
-            labels = eval_labels.to(device)
-
+            labels =[l.to(device) for l in labels]
+            
             history_length_mask = history_length_mask.to(device)
             candidate_mask = candidate_mask.to(device)
 
