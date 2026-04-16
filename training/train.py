@@ -427,8 +427,8 @@ def train(config):
                 -1e9
             )
 
-            #filtering invalid labels
-            valid_mask = labels >= 0
+            #filtering invalid labels for list of tensors
+            valid_indices = [i for i, l in enumerate(labels) if l.numel() > 0]
 
             if len(labels) == 0:
                 continue
