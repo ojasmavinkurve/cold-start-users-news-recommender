@@ -457,7 +457,8 @@ def train(config):
             l2_reg = 0.0
             lambda_reg = config["lambda_reg"]
             for param in model.parameters():
-                l2_reg += torch.norm(param, 2)
+                l2_reg += torch.norm(param, 2) #iterated and calculated euclidean norm of every weight and bias
+
             loss = loss + lambda_reg * l2_reg
             
             #gaurd for debugging
