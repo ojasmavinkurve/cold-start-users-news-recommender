@@ -450,11 +450,15 @@ def train(config):
                 u_attr,
                 u_hist,
                 history_mask,
-                config["lambda_align"],
-                config["lambda_reg"]
+                config["lambda_align"]
             )
 
-            #need to do l2 regularization to prevent overfitting. we can add it to the total loss
+            #l2 reg or weight decay to prevent overfitting
+            l2_reg = 0.0
+            lambda_reg = config["lambda_reg"]
+            for param in model.parameters():
+                l2_reg += torch.norm(param, 2)
+            loss = loss + lambda_reg * l2_reg
             
             #gaurd for debugging
             if torch.isnan(loss):
