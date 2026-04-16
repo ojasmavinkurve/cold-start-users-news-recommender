@@ -23,11 +23,17 @@ def bpr_loss(scores, labels):
     B, K = scores.shape
 
     for i in range(B):
+        print(type(labels[i]), labels[i])
 
         pos_indices = labels[i]
 
+        if isinstance(pos_indices, list):
+            pos_indices = torch.tensor(pos_indices, device=scores.device)
+
         if pos_indices.numel() == 0:
             continue
+
+        pos_indices = pos_indices.view(-1)
 
         pos_scores = scores[i][pos_indices]
 
@@ -37,7 +43,7 @@ def bpr_loss(scores, labels):
         neg_scores = scores[i][neg_mask]
 
         #skip if no negatives or invalid shape
-        if neg_scores.numel() == 0 or pos_scores.dim() == 0:
+        if neg_scores.numel() == 0:
             continue
 
         # ensure proper shape
