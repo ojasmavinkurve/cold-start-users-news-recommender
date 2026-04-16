@@ -542,7 +542,7 @@ def main():
         "epochs": 15,
         "lr": 0.0008,
         "lambda_align": 0.05,
-        "lambda_reg": 0.00001,
+        "lambda_reg": 0.000001,
         "embedding_dim": 384,
         "patience": 3,
         "num_workers": 0,
