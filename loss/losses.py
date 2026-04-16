@@ -23,7 +23,6 @@ def bpr_loss(scores, labels):
     B, K = scores.shape
 
     for i in range(B):
-        print(type(labels[i]), labels[i])
 
         pos_indices = labels[i]
 
