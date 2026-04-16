@@ -434,7 +434,7 @@ def train(config):
                 continue
 
             scores = scores[valid_indices]
-            labels = labels[valid_indices]
+            labels = [labels[i] for i in valid_indices]
             u_attr = u_attr[valid_indices]
             u_hist = u_hist[valid_indices]
             history_mask = history_masks.squeeze().to(device)[valid_indices]
