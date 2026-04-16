@@ -214,7 +214,12 @@ def evaluate(model, dataloader, device):
             #scores = scores + (candidate_mask + 1e-45).log()
 
             scores = scores.cpu()
-            llabels = [l.cpu() for l in labels]
+            if isinstance(labels, list):
+                labels = torch.tensor([l.item() for l in labels])
+            else:
+                labels = labels
+
+            labels = labels.cpu()
 
             batch_metrics = compute_metrics(scores, labels)
 
