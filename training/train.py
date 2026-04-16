@@ -433,11 +433,11 @@ def train(config):
             if len(labels) == 0:
                 continue
 
-            scores = scores[valid_mask]
-            labels = labels[valid_mask]
-            u_attr = u_attr[valid_mask]
-            u_hist = u_hist[valid_mask]
-            history_mask = history_masks.squeeze().to(device)[valid_mask]
+            scores = scores[valid_indices]
+            labels = labels[valid_indices]
+            u_attr = u_attr[valid_indices]
+            u_hist = u_hist[valid_indices]
+            history_mask = history_masks.squeeze().to(device)[valid_indices]
 
             loss, rec_loss, align_loss = total_loss(
                 scores,
