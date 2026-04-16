@@ -214,7 +214,7 @@ def evaluate(model, dataloader, device):
             #scores = scores + (candidate_mask + 1e-45).log()
 
             scores = scores.cpu()
-            labels = labels.cpu()
+            llabels = [l.cpu() for l in labels]
 
             batch_metrics = compute_metrics(scores, labels)
 
