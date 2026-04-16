@@ -213,6 +213,9 @@ def evaluate(model, dataloader, device):
             scores = scores.masked_fill(candidate_mask == 0, -1e9)
             #scores = scores + (candidate_mask + 1e-45).log()
 
+            scores = scores.cpu()
+            labels = labels.cpu()
+
             batch_metrics = compute_metrics(scores, labels)
 
             # accumulate
