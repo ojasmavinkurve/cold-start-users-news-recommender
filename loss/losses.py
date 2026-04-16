@@ -127,12 +127,8 @@ def total_loss(scores,
     # Alignment loss (only for users with history)
     #when users have less history, the alignment loss can be noisy. we donot consider users with less history 
     align_loss = alignment_loss(u_attr, u_hist, history_mask)
-
-    l2_reg = 0.0
-    for param in model.parameters():
-        l2_reg += torch.norm(param, 2) #iterated and calculated euclidean norm of every weight and bias
-
-    loss = rec_loss + lambda_align * align_loss + lambda_reg * l2_reg
+ 
+    loss = rec_loss + lambda_align * align_loss
 
 
     return loss, rec_loss, align_loss
