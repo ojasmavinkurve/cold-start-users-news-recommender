@@ -195,7 +195,7 @@ def evaluate(model, dataloader, device):
 
             histories = histories.to(device)
             candidates = candidates.to(device)
-            labels = [l.to(device) for l in labels]
+            #labels = [l.to(device) for l in labels]
 
             history_length_mask = history_length_mask.to(device)
             candidate_mask = candidate_mask.to(device)
@@ -214,10 +214,7 @@ def evaluate(model, dataloader, device):
             #scores = scores + (candidate_mask + 1e-45).log()
 
             scores = scores.cpu()
-            if isinstance(labels, list):
-                labels = torch.tensor([l.item() for l in labels])
-            else:
-                labels = labels
+            labels=eval_labels.to(device)
 
             labels = labels.cpu()
 
