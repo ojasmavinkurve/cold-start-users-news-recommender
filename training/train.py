@@ -46,7 +46,7 @@ class EmbeddingLookup:
 
 class MindDataset(Dataset):
 
-    def __init__(self, behaviors_df, attribute_builder, embedding_lookup, is_test=False):
+    def __init__(self, behaviors_df, attribute_builder, embedding_lookup, num_negs, is_test=False):
 
         self.behaviors = behaviors_df
         self.attr_builder = attribute_builder
@@ -54,6 +54,7 @@ class MindDataset(Dataset):
         self.cached_attrs = {}
         last_seen = {}
         self.is_test = is_test
+        self.num_negs=num_negs
 
         for i in range(len(self.behaviors)):
 
@@ -108,34 +109,76 @@ class MindDataset(Dataset):
         click = attrs["click"]
         semantic = attrs["semantic"]
 
-        #candidate embeddings and label
+        #candidate embeddings and label with neg sampling
+
+        NUM_NEGATIVES = self.num_negs  # tune this
+        items = impressions.split()
+        pos_items = []
+        neg_items = []
+
+        # separate positives and negatives
+        for item in items:
+            parts = item.split("-")
+            nid = parts[0]
+
+            if len(parts) == 2 and parts[1] == "1":
+                pos_items.append(nid)
+            else:
+                neg_items.append(nid)
+
+        # safety: skip if no positive
+        if len(pos_items) == 0:
+            return None
+
+        # use only ONE positive (reduces noise)
+        pos_nid = pos_items[0]
+
+        # get category of positive
+        pos_cat = self.attr_builder.news_to_category.get(pos_nid, None)
+
+        hard_negs = []
+        other_negs = []
+
+        # split negatives into hard (same category) and others
+        for nid in neg_items:
+            cat = self.attr_builder.news_to_category.get(nid, None)
+
+            if cat == pos_cat:
+                hard_negs.append(nid)
+            else:
+                other_negs.append(nid)
+
+        # sample negatives
+        if len(hard_negs) >= NUM_NEGATIVES:
+            sampled_negs = random.sample(hard_negs, NUM_NEGATIVES)
+        else:
+            remaining = NUM_NEGATIVES - len(hard_negs)
+            sampled_negs = hard_negs + random.sample(
+                other_negs,
+                min(remaining, len(other_negs))
+            )
+
+        # final candidate list
+        final_items = [pos_nid] + sampled_negs
+
+        # shuffle to avoid position bias
+        random.shuffle(final_items)
+
+        # build embeddings and label
         candidates = []
         clicked_index = None
-        items = impressions.split()
 
-        clicked_indices = []
-        has_label = False
-
-        for i, item in enumerate(items):
-            parts = item.split("-")
-            nid=parts[0]
+        for i, nid in enumerate(final_items):
             candidates.append(self.embed(nid))
 
-            if len(parts) == 2:
-                has_label=True
-                if parts[1] == "1":
-                    clicked_indices.append(i)
-                
+            if nid == pos_nid:
+                clicked_index = i
+
         candidates = torch.stack(candidates)
 
-        if has_label and len(clicked_indices) > 0:
-            #choose all clicked items
-            #clicked_index = random.choice(clicked_indices)
-            label = torch.tensor(clicked_indices, dtype=torch.long)
-            eval_label = torch.tensor(clicked_indices[0], dtype=torch.long)
-        else:
-            label = torch.tensor([], dtype=torch.long)
-            eval_label = torch.tensor(-1, dtype=torch.long)
+        # IMPORTANT: keep label format SAME (list of indices)
+        label = torch.tensor([clicked_index], dtype=torch.long)
+        eval_label = torch.tensor(clicked_index, dtype=torch.long)
        
         #history embeddings
         history_embeddings = []
@@ -328,7 +371,8 @@ def train(config):
     dataset = MindDataset(
         behaviors_df,
         attribute_builder,
-        embedding_lookup
+        embedding_lookup,
+        num_negs = config["num_negs"]
     )
 
     dataloader = DataLoader(
@@ -372,11 +416,11 @@ def train(config):
         embedding_dim=config["embedding_dim"]
     ).to(device)
 
-    optimizer = optim.Adam(
+    optimizer = torch.optim.AdamW(
         model.parameters(),
-        lr=config["lr"]
+        lr=config["lr"],
+        weight_decay=config["weight_decay"]   
     )
-
     best_loss = float("inf")
 
     best_metrics = {"AUC": 0,"MRR": 0,"nDCG@5": 0}
@@ -454,12 +498,12 @@ def train(config):
             )
 
             #l2 reg or weight decay to prevent overfitting
-            l2_reg = 0.0
-            lambda_reg = config["lambda_reg"]
-            for param in model.parameters():
-                l2_reg += torch.norm(param, 2) #iterated and calculated euclidean norm of every weight and bias
+            #l2_reg = 0.0
+            #lambda_reg = config["lambda_reg"]
+            #for param in model.parameters():
+                #l2_reg += torch.norm(param, 2) #iterated and calculated euclidean norm of every weight and bias
 
-            loss = loss + lambda_reg * l2_reg
+            #loss = loss + lambda_reg * l2_reg
             
             #gaurd for debugging
             if torch.isnan(loss):
@@ -540,9 +584,10 @@ def main():
 
         "batch_size": 32,
         "epochs": 15,
-        "lr": 0.0003,
+        "num_negs": 5,
+        "lr": 0.0005,
         "lambda_align": 0.05,
-        "lambda_reg": 0.000001,
+        "weight_decay":0.00001,
         "embedding_dim": 384,
         "patience": 3,
         "num_workers": 0,
