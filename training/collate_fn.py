@@ -17,7 +17,8 @@ def collate_fn(batch):
         eval_labels,
         history_masks
     ) = zip(*batch)
-
+    
+    batch = [b for b in batch if b is not None]
     # -----------------------------------------
     # Stack simple tensors
     # -----------------------------------------
