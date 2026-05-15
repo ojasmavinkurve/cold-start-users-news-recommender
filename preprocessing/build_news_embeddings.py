@@ -50,11 +50,14 @@ def build_news_embeddings(batch_size=64):
     model = SentenceTransformer("all-MiniLM-L6-v2")
 
     # Encode titles
-    titles = all_news["title"].fillna("").tolist()
+    texts = (
+        all_news["title"].fillna("") + " " +
+        all_news["abstract"].fillna("")
+    ).tolist()
 
-    print("Encoding titles...")
+    print("Encoding titles and abstract...")
     embeddings = model.encode(
-        titles,
+        texts,
         batch_size=batch_size,
         show_progress_bar=True
     )
@@ -63,7 +66,7 @@ def build_news_embeddings(batch_size=64):
 
     print(f"Embeddings shape: {embeddings.shape}")
 
-    # Create news_id → index mapping
+    # Create news_id to index mapping
     news_id_list = all_news["news_id"].tolist()
     news_id_to_index = {news_id: idx for idx, news_id in enumerate(news_id_list)}
 
