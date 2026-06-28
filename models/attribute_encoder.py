@@ -33,6 +33,8 @@ class AttributeEncoder(nn.Module):
         # Semantic: 384 -> 384
         self.semantic_proj = nn.Linear(embedding_dim, embedding_dim)
 
+        self.dropout = nn.Dropout(0.2)
+
         # Gating layer
         # Input size = exposure(384) + click(384) + semantic(384)
         gate_input_dim = embedding_dim*3
@@ -46,9 +48,9 @@ class AttributeEncoder(nn.Module):
         """
 
         # Project each attribute to 384-dimensional space
-        e_proj = self.exposure_proj(exposure)   # (B, 384)
-        c_proj = self.click_proj(click)         # (B, 384)
-        s_proj = self.semantic_proj(semantic)   # (B, 384)
+        e_proj = self.dropout(self.exposure_proj(exposure))
+        c_proj = self.dropout(self.click_proj(click))
+        s_proj = self.dropout(self.semantic_proj(semantic))
 
         # Compute gating weights
         raw_concat = torch.cat([e_proj, c_proj, s_proj], dim=-1)

@@ -80,11 +80,9 @@ def alignment_loss(u_attr, u_hist, history_mask):
         Scalar alignment loss
     """
 
-    # Compute per-user MSE (without reduction)
-    mse_per_user = F.mse_loss(u_attr, u_hist, reduction='none')  # (B, 384)
+    cos_sim = F.cosine_similarity(u_attr, u_hist, dim=-1)
 
-    # Sum over embedding dimensions
-    mse_per_user = mse_per_user.mean(dim=1)  # (B,)
+    mse_per_user = 1 - cos_sim
 
     history_mask = history_mask.float()
     # Apply mask (only users with history)

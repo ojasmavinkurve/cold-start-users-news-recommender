@@ -46,7 +46,7 @@ class EmbeddingLookup:
 
 class MindDataset(Dataset):
 
-    def __init__(self, behaviors_df, attribute_builder, embedding_lookup, num_negs, is_test=False):
+    def __init__(self, behaviors_df, attribute_builder, embedding_lookup, num_negs, is_test):
 
         self.behaviors = behaviors_df
         self.attr_builder = attribute_builder
@@ -110,75 +110,122 @@ class MindDataset(Dataset):
         semantic = attrs["semantic"]
 
         #candidate embeddings and label with neg sampling
+        if not self.is_test:
+            NUM_NEGATIVES = self.num_negs  # tune this
+            items = impressions.split()
+            pos_items = []
+            neg_items = []
 
-        NUM_NEGATIVES = self.num_negs  # tune this
-        items = impressions.split()
-        pos_items = []
-        neg_items = []
+                # separate positives and negatives
+            for item in items:
+                parts = item.split("-")
+                nid = parts[0]
 
-        # separate positives and negatives
-        for item in items:
-            parts = item.split("-")
-            nid = parts[0]
+                if len(parts) == 2 and parts[1] == "1":
+                    pos_items.append(nid)
+                else:
+                    neg_items.append(nid)
 
-            if len(parts) == 2 and parts[1] == "1":
-                pos_items.append(nid)
+            # safety: skip if no positive
+            if len(pos_items) == 0:
+                return None
+
+            # use only ONE positive (reduces noise)
+            pos_nid = pos_items[0]
+
+            # get category of positive
+            pos_cat = self.attr_builder.news_to_category.get(pos_nid, None)
+
+            hard_negs = []
+            other_negs = []
+            pos_emb = self.embed(pos_nid)
+
+            neg_scores = []
+
+            for nid in neg_items:
+                neg_emb = self.embed(nid)
+
+                sim = torch.cosine_similarity(
+                    pos_emb.unsqueeze(0),
+                    neg_emb.unsqueeze(0),
+                    dim=-1
+                ).item()
+
+                neg_scores.append((nid, sim))
+
+            # highest similarity = hardest negatives
+            neg_scores.sort(key=lambda x: x[1], reverse=True)
+
+            sampled_negs = [
+                nid for nid, _ in neg_scores[:NUM_NEGATIVES]
+            ]
+
+            # split negatives into hard (same category) and others
+            for nid in neg_items:
+                cat = self.attr_builder.news_to_category.get(nid, None)
+
+                if cat == pos_cat:
+                    hard_negs.append(nid)
+                else:
+                    other_negs.append(nid)
+
+            # sample negatives
+            if len(hard_negs) >= NUM_NEGATIVES:
+                sampled_negs = random.sample(hard_negs, NUM_NEGATIVES)
             else:
-                neg_items.append(nid)
+                remaining = NUM_NEGATIVES - len(hard_negs)
+                sampled_negs = hard_negs + random.sample(
+                    other_negs,
+                    min(remaining, len(other_negs))
+                )
 
-        # safety: skip if no positive
-        if len(pos_items) == 0:
-            return None
-
-        # use only ONE positive (reduces noise)
-        pos_nid = pos_items[0]
-
-        # get category of positive
-        pos_cat = self.attr_builder.news_to_category.get(pos_nid, None)
-
-        hard_negs = []
-        other_negs = []
-
-        # split negatives into hard (same category) and others
-        for nid in neg_items:
-            cat = self.attr_builder.news_to_category.get(nid, None)
-
-            if cat == pos_cat:
-                hard_negs.append(nid)
+            if self.is_test:
+                final_items = pos_items + neg_items
             else:
-                other_negs.append(nid)
+                final_items = [pos_nid] + sampled_negs
 
-        # sample negatives
-        if len(hard_negs) >= NUM_NEGATIVES:
-            sampled_negs = random.sample(hard_negs, NUM_NEGATIVES)
+            # shuffle to avoid position bias
+            random.shuffle(final_items)
+
+            # build embeddings and label
+            candidates = []
+            clicked_index = None
+
+            for i, nid in enumerate(final_items):
+                candidates.append(self.embed(nid))
+
+                if nid == pos_nid:
+                    clicked_index = i
+
+            candidates = torch.stack(candidates)
+
+            # IMPORTANT: keep label format SAME (list of indices)
+            label = torch.tensor([clicked_index], dtype=torch.long)
+            eval_label = torch.tensor(clicked_index, dtype=torch.long)
+
         else:
-            remaining = NUM_NEGATIVES - len(hard_negs)
-            sampled_negs = hard_negs + random.sample(
-                other_negs,
-                min(remaining, len(other_negs))
-            )
+            candidates = []
+            clicked_indices = []
 
-        # final candidate list
-        final_items = [pos_nid] + sampled_negs
+            items = impressions.split()
 
-        # shuffle to avoid position bias
-        random.shuffle(final_items)
+            for i, item in enumerate(items):
+                parts = item.split("-")
+                nid = parts[0]
 
-        # build embeddings and label
-        candidates = []
-        clicked_index = None
+                candidates.append(self.embed(nid))
 
-        for i, nid in enumerate(final_items):
-            candidates.append(self.embed(nid))
+                if len(parts) == 2 and parts[1] == "1":
+                    clicked_indices.append(i)
 
-            if nid == pos_nid:
-                clicked_index = i
+            candidates = torch.stack(candidates)
 
-        candidates = torch.stack(candidates)
-
-        # IMPORTANT: keep label format SAME (list of indices)
-        label = torch.tensor([clicked_index], dtype=torch.long)
-        eval_label = torch.tensor(clicked_index, dtype=torch.long)
+            if len(clicked_indices) > 0:
+                label = torch.tensor(clicked_indices, dtype=torch.long)
+                eval_label = torch.tensor(clicked_indices[0], dtype=torch.long)
+            else:
+                label = torch.tensor([], dtype=torch.long)
+                eval_label = torch.tensor(-1, dtype=torch.long)
        
         #history embeddings
         history_embeddings = []
@@ -372,7 +419,8 @@ def train(config):
         behaviors_df,
         attribute_builder,
         embedding_lookup,
-        num_negs = config["num_negs"]
+        num_negs = config["num_negs"],
+        is_test=False
     )
 
     dataloader = DataLoader(
@@ -399,6 +447,7 @@ def train(config):
         dev_behaviors_df,
         attribute_builder,
         embedding_lookup, 
+        num_negs = config["num_negs"],
         is_test=False
     )
 
@@ -584,9 +633,9 @@ def main():
 
         "batch_size": 32,
         "epochs": 15,
-        "num_negs": 5,
+        "num_negs": 20,
         "lr": 0.0005,
-        "lambda_align": 0.05,
+        "lambda_align": 0.07,
         "weight_decay":0.00001,
         "embedding_dim": 384,
         "patience": 3,

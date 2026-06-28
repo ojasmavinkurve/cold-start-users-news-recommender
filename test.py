@@ -10,7 +10,7 @@ from torch.utils.data import DataLoader
 from models.full_model import ColdStartModel
 from preprocessing.attribute_builder import AttributeBuilder
 from training.collate_fn import collate_fn
-from training.train import EmbeddingLookup, MindDataset, evaluate  # reuse directly
+from training.train import EmbeddingLookup, MindDataset, evaluate# reuse directly
 from loss.metrics import compute_metrics  
 
 import path_variables as pv
@@ -184,6 +184,7 @@ def main():
         behaviors_df,
         attribute_builder,
         embedding_lookup,
+        num_negs=20,
         is_test=True
     )
 
