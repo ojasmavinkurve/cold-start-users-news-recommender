@@ -636,7 +636,7 @@ def main():
         "num_negs": 20,
         "lr": 0.0005,
         "lambda_align": 0.07,
-        "weight_decay":0.00001,
+        "weight_decay":0.00005,
         "embedding_dim": 384,
         "patience": 3,
         "num_workers": 0,
