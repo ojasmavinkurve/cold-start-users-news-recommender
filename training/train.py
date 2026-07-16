@@ -12,6 +12,7 @@ from torch.utils.data import Dataset, DataLoader
 import torch.optim as optim
 import torch.multiprocessing as mp
 
+from collections import Counter
 from models.full_model import ColdStartModel
 from preprocessing.attribute_builder import AttributeBuilder
 from training.collate_fn import collate_fn
@@ -52,207 +53,262 @@ class MindDataset(Dataset):
         self.attr_builder = attribute_builder
         self.embed = embedding_lookup
         self.cached_attrs = {}
-        last_seen = {}
+        user_state = {
+            user_id:
+            {
+                "clicked_news":[],
+                "category_counter": {},
+                "semantic_sum": 0,
+                "click_count" : 0
+            }
+        }
         self.is_test = is_test
         self.num_negs=num_negs
 
+        user_memory = {}
+
         for i in range(len(self.behaviors)):
-
             row = self.behaviors.iloc[i]
-
             curr_imp = row["impressions"]
             user_id = row["user_id"]
-
-            if user_id not in last_seen:
-
-                current_news_ids = [nid.split("-")[0] for nid in curr_imp.split()]
-
-                attrs = {
-                    "exposure": self.attr_builder.compute_exposure_vector(current_news_ids),
-                    "click": torch.zeros(self.attr_builder.num_categories, device=self.attr_builder.device),
-                    "semantic": torch.zeros(384, device=self.attr_builder.device)
-                }
-
-            else:
-                prev_imp = last_seen[user_id]
-
-                attrs = self.attr_builder.build_from_impression(prev_imp)
-
-                current_news_ids = [nid.split("-")[0] for nid in curr_imp.split()]
-                attrs["exposure"] = self.attr_builder.compute_exposure_vector(current_news_ids)
-
-            self.cached_attrs[i] = attrs
-            last_seen[user_id] = curr_imp
-        
-        print(len(self.cached_attrs), len(self.behaviors))
-
-        if self.is_test:
-            self.valid_indices = list(range(len(self.behaviors)))
-        else:
-            self.valid_indices = []
-            for i, imp in enumerate(self.behaviors["impressions"]):
-                if any(item.endswith("-1") for item in imp.split()):
-                    self.valid_indices.append(i)
-
-    def __len__(self):
-        return len(self.valid_indices)
-
-    def __getitem__(self, idx):
-        real_idx = self.valid_indices[idx]
-        row = self.behaviors.iloc[real_idx]
-
-        impressions = row["impressions"]
-        history = row["history"]
-        attrs = self.cached_attrs[real_idx]
-
-        exposure = attrs["exposure"]
-        click = attrs["click"]
-        semantic = attrs["semantic"]
-
-        #candidate embeddings and label with neg sampling
-        if not self.is_test:
-            NUM_NEGATIVES = self.num_negs  # tune this
-            items = impressions.split()
-            pos_items = []
-            neg_items = []
-
-                # separate positives and negatives
-            for item in items:
-                parts = item.split("-")
-                nid = parts[0]
-
-                if len(parts) == 2 and parts[1] == "1":
-                    pos_items.append(nid)
-                else:
-                    neg_items.append(nid)
-
-            # safety: skip if no positive
-            if len(pos_items) == 0:
-                return None
-
-            # use only ONE positive (reduces noise)
-            pos_nid = pos_items[0]
-
-            # get category of positive
-            pos_cat = self.attr_builder.news_to_category.get(pos_nid, None)
-
-            hard_negs = []
-            other_negs = []
-            pos_emb = self.embed(pos_nid)
-
-            neg_scores = []
-
-            for nid in neg_items:
-                neg_emb = self.embed(nid)
-
-                sim = torch.cosine_similarity(
-                    pos_emb.unsqueeze(0),
-                    neg_emb.unsqueeze(0),
-                    dim=-1
-                ).item()
-
-                neg_scores.append((nid, sim))
-
-            # highest similarity = hardest negatives
-            neg_scores.sort(key=lambda x: x[1], reverse=True)
-
-            sampled_negs = [
-                nid for nid, _ in neg_scores[:NUM_NEGATIVES]
+            current_news = [
+                x.split("-")[0]
+                for x in curr_imp.split()
             ]
 
-            # split negatives into hard (same category) and others
-            for nid in neg_items:
-                cat = self.attr_builder.news_to_category.get(nid, None)
+            if user_id not in user_memory:
+                user_memory[user_id] = {
+                    "clicked_news": [],
+                    "semantic_sum": torch.zeros(384),
+                    "click_count": 0,
+                    "category_counter": Counter()
+                }
 
-                if cat == pos_cat:
-                    hard_negs.append(nid)
-                else:
-                    other_negs.append(nid)
+            memory = user_memory[user_id]
 
-            # sample negatives
-            if len(hard_negs) >= NUM_NEGATIVES:
-                sampled_negs = random.sample(hard_negs, NUM_NEGATIVES)
-            else:
-                remaining = NUM_NEGATIVES - len(hard_negs)
-                sampled_negs = hard_negs + random.sample(
-                    other_negs,
-                    min(remaining, len(other_negs))
+            #exposure
+            exposure = self.attr_builder.compute_exposure_vector(
+                current_news
+            )
+
+            #click vector
+            click_vector = torch.zeros(
+                self.attr_builder.num_categories
+            )
+
+            total_clicks = memory["click_count"]
+            if total_clicks > 0:
+                for cat, count in memory["category_counter"].items():
+                    idx = self.attr_builder.category_index[cat]
+                    click_vector[idx] = count / total_clicks
+
+            #semantic prior
+            if total_clicks > 0:
+                semantic = (
+                    memory["semantic_sum"] /
+                    total_clicks
                 )
 
-            if self.is_test:
-                final_items = pos_items + neg_items
             else:
-                final_items = [pos_nid] + sampled_negs
+                semantic = torch.zeros(384)
 
-            # shuffle to avoid position bias
-            random.shuffle(final_items)
+            # Change this block to clone/copy the values
+            self.cached_attrs[i] = {
+                "exposure": exposure.clone(), # Clone if exposure is a tensor modified elsewhere
+                "click": click_vector.clone(), # Snapshot of click vector
+                "semantic": semantic.clone()   # Snapshot of semantic vector
+            }
 
-            # build embeddings and label
-            candidates = []
-            clicked_index = None
-
-            for i, nid in enumerate(final_items):
-                candidates.append(self.embed(nid))
-
-                if nid == pos_nid:
-                    clicked_index = i
-
-            candidates = torch.stack(candidates)
-
-            # IMPORTANT: keep label format SAME (list of indices)
-            label = torch.tensor([clicked_index], dtype=torch.long)
-            eval_label = torch.tensor(clicked_index, dtype=torch.long)
-
-        else:
-            candidates = []
-            clicked_indices = []
-
-            items = impressions.split()
-
-            for i, item in enumerate(items):
+            #update user memory with current impression
+            for item in curr_imp.split():
                 parts = item.split("-")
+                if len(parts) != 2:
+                    continue
+
+                if parts[1] != "1":
+                    continue
+
                 nid = parts[0]
+                memory["clicked_news"].append(nid)
+                memory["click_count"] += 1
 
-                candidates.append(self.embed(nid))
+                if nid in self.attr_builder.news_embeddings:
+                    memory["semantic_sum"] += \
+                        self.attr_builder.news_embeddings[nid]
 
-                if len(parts) == 2 and parts[1] == "1":
-                    clicked_indices.append(i)
-
-            candidates = torch.stack(candidates)
-
-            if len(clicked_indices) > 0:
-                label = torch.tensor(clicked_indices, dtype=torch.long)
-                eval_label = torch.tensor(clicked_indices[0], dtype=torch.long)
-            else:
-                label = torch.tensor([], dtype=torch.long)
-                eval_label = torch.tensor(-1, dtype=torch.long)
-       
-        #history embeddings
-        history_embeddings = []
-
-        if isinstance(history, str):
-            for nid in history.split():
-                history_embeddings.append(self.embed(nid))
+                if nid in self.attr_builder.news_to_category:
+                    cat = self.attr_builder.news_to_category[nid]
+                    memory["category_counter"][cat] += 1
                 
-        if len(history_embeddings) > 0:
-            history_embeddings = torch.stack(history_embeddings)
-            history_mask = torch.tensor(1.0)
+                print(len(self.cached_attrs), len(self.behaviors))
 
-        else:
-            history_embeddings = torch.zeros(0, 384)
-            history_mask = torch.tensor(0.0)
+                if self.is_test:
+                    self.valid_indices = list(range(len(self.behaviors)))
+                else:
+                    self.valid_indices = []
+                    for i, imp in enumerate(self.behaviors["impressions"]):
+                        if any(item.endswith("-1") for item in imp.split()):
+                            self.valid_indices.append(i)
 
-        return (
-            exposure,
-            click,
-            semantic,
-            history_embeddings,
-            candidates,
-            label,
-            eval_label,
-            history_mask
-        )
-        
+            def __len__(self):
+                return len(self.valid_indices)
+
+            def __getitem__(self, idx):
+                real_idx = self.valid_indices[idx]
+                row = self.behaviors.iloc[real_idx]
+
+                impressions = row["impressions"]
+                history = row["history"]
+                attrs = self.cached_attrs[real_idx]
+
+                exposure = attrs["exposure"]
+                click = attrs["click"]
+                semantic = attrs["semantic"]
+
+                #candidate embeddings and label with neg sampling
+                if not self.is_test:
+                    NUM_NEGATIVES = self.num_negs  # tune this
+                    items = impressions.split()
+                    pos_items = []
+                    neg_items = []
+
+                        # separate positives and negatives
+                    for item in items:
+                        parts = item.split("-")
+                        nid = parts[0]
+
+                        if len(parts) == 2 and parts[1] == "1":
+                            pos_items.append(nid)
+                        else:
+                            neg_items.append(nid)
+
+                    # safety: skip if no positive
+                    if len(pos_items) == 0:
+                        return None
+
+                    # use only ONE positive (reduces noise)
+                    pos_nid = pos_items[0]
+
+                    # get category of positive
+                    pos_cat = self.attr_builder.news_to_category.get(pos_nid, None)
+
+                    hard_negs = []
+                    other_negs = []
+                    pos_emb = self.embed(pos_nid)
+
+                    neg_scores = []
+
+                    for nid in neg_items:
+                        neg_emb = self.embed(nid)
+
+                        sim = torch.cosine_similarity(
+                            pos_emb.unsqueeze(0),
+                            neg_emb.unsqueeze(0),
+                            dim=-1
+                        ).item()
+
+                        neg_scores.append((nid, sim))
+
+                    # highest similarity = hardest negatives
+                    neg_scores.sort(key=lambda x: x[1], reverse=True)
+
+                    sampled_negs = [
+                        nid for nid, _ in neg_scores[:NUM_NEGATIVES]
+                    ]
+
+                    # split negatives into hard (same category) and others
+                    for nid in neg_items:
+                        cat = self.attr_builder.news_to_category.get(nid, None)
+
+                        if cat == pos_cat:
+                            hard_negs.append(nid)
+                        else:
+                            other_negs.append(nid)
+
+                    # sample negatives
+                    if len(hard_negs) >= NUM_NEGATIVES:
+                        sampled_negs = random.sample(hard_negs, NUM_NEGATIVES)
+                    else:
+                        remaining = NUM_NEGATIVES - len(hard_negs)
+                        sampled_negs = hard_negs + random.sample(
+                            other_negs,
+                            min(remaining, len(other_negs))
+                        )
+
+                    if self.is_test:
+                        final_items = pos_items + neg_items
+                    else:
+                        final_items = [pos_nid] + sampled_negs
+
+                    # shuffle to avoid position bias
+                    random.shuffle(final_items)
+
+                    # build embeddings and label
+                    candidates = []
+                    clicked_index = None
+
+                    for i, nid in enumerate(final_items):
+                        candidates.append(self.embed(nid))
+
+                        if nid == pos_nid:
+                            clicked_index = i
+
+                    candidates = torch.stack(candidates)
+
+                    # IMPORTANT: keep label format SAME (list of indices)
+                    label = torch.tensor([clicked_index], dtype=torch.long)
+                    eval_label = torch.tensor(clicked_index, dtype=torch.long)
+
+                else:
+                    candidates = []
+                    clicked_indices = []
+
+                    items = impressions.split()
+
+                    for i, item in enumerate(items):
+                        parts = item.split("-")
+                        nid = parts[0]
+
+                        candidates.append(self.embed(nid))
+
+                        if len(parts) == 2 and parts[1] == "1":
+                            clicked_indices.append(i)
+
+                    candidates = torch.stack(candidates)
+
+                    if len(clicked_indices) > 0:
+                        label = torch.tensor(clicked_indices, dtype=torch.long)
+                        eval_label = torch.tensor(clicked_indices[0], dtype=torch.long)
+                    else:
+                        label = torch.tensor([], dtype=torch.long)
+                        eval_label = torch.tensor(-1, dtype=torch.long)
+            
+                #history embeddings
+                history_embeddings = []
+
+                if isinstance(history, str):
+                    for nid in history.split():
+                        history_embeddings.append(self.embed(nid))
+                        
+                if len(history_embeddings) > 0:
+                    history_embeddings = torch.stack(history_embeddings)
+                    history_mask = torch.tensor(1.0)
+
+                else:
+                    history_embeddings = torch.zeros(0, 384)
+                    history_mask = torch.tensor(0.0)
+
+                return (
+                    exposure,
+                    click,
+                    semantic,
+                    history_embeddings,
+                    candidates,
+                    label,
+                    eval_label,
+                    history_mask
+                )
+                
 
 #evaluate
 def evaluate(model, dataloader, device):
@@ -631,12 +687,12 @@ def main():
 
     CONFIG = {
 
-        "batch_size": 64,
+        "batch_size": 32,
         "epochs": 15,
         "num_negs": 20,
         "lr": 0.0005,
         "lambda_align": 0.07,
-        "weight_decay":0.00005,
+        "weight_decay":0.00001,
         "embedding_dim": 384,
         "patience": 3,
         "num_workers": 0,
