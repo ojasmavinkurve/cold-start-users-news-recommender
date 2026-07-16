@@ -631,7 +631,7 @@ def main():
 
     CONFIG = {
 
-        "batch_size": 32,
+        "batch_size": 64,
         "epochs": 15,
         "num_negs": 20,
         "lr": 0.0005,
